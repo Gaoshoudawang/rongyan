@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta name="color-scheme" content="light only">
+  <meta name="supported-color-schemes" content="light">
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>选择支付方式</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{width:100%;height:100%;overflow:hidden;background:#000}
+.stage{position:relative;width:2912px;height:1344px;transform-origin:top left;overflow:hidden}
+.bg-img{position:absolute;top:0;left:0;width:100%;height:100%;object-fit:cover;display:block;pointer-events:none}
+.amount-text{position:absolute;left:504px;top:700px;width:650px;height:200px;color:#111;font-size:140px;font-weight:bold;text-align:left;line-height:200px;z-index:20;background:#fff;border-radius:8px;text-shadow:0 2px 8px rgba(0,0,0,0.3)}
+.hotspot{position:absolute;cursor:pointer;z-index:10;background:transparent;border:none;outline:none}
+.hotspot:active{background:rgba(0,0,0,0.05)}
+
+.success-mask{position:fixed;inset:0;z-index:99999;background:rgba(0,0,0,0.85);display:none;align-items:center;justify-content:center;cursor:pointer;}
+.success-mask.show{display:flex;}
+.success-img{width:100%;height:100%;object-fit:contain;display:block;pointer-events:none}
+
+/* 禁止长按查看图片/保存图片 */
+img{
+  -webkit-touch-callout:none;
+  -webkit-user-select:none;
+  user-select:none;
+  -webkit-tap-highlight-color:transparent;
+}
+/* 禁止全局右键菜单 */
+*{
+  -webkit-touch-callout:none;
+  -webkit-user-select:none;
+  user-select:none;
+}
+</style>
+<style>
+
+/* ===== 防止浏览器暗夜模式自动反转颜色 ===== */
+:root {
+  color-scheme: light only;
+  -webkit-color-scheme: light only;
+}
+html {
+  color-scheme: light only;
+  -webkit-color-scheme: light only;
+  background-color: #000 !important;
+}
+body {
+  color-scheme: light only;
+  -webkit-color-scheme: light only;
+  background-color: #000 !important;
+  -webkit-lightness-adjust: none !important;
+}
+/* 防止图片被反转 */
+img {
+  -webkit-filter: none !important;
+  filter: none !important;
+}
+/* ============================================ */
+
+</style>
+</head>
+<body>
+<div class="stage" id="stage">
+  <img class="bg-img" src="../images/common/pages/recharge/payment_bg.png" alt="选择支付方式">
+  <div class="amount-text" id="amountText">¥648.00</div>
+  <!-- 关闭按钮 -->
+  <button class="hotspot" id="closeBtn" style="left:2780px;top:380px;width:80px;height:80px"></button>
+  <!-- 微信支付 -->
+  <button class="hotspot" id="wechatBtn" style="left:1500px;top:520px;width:380px;height:280px"></button>
+  <!-- QQ支付 -->
+  <button class="hotspot" id="qqBtn" style="left:1980px;top:520px;width:380px;height:280px"></button>
+  <!-- Q币支付 -->
+  <button class="hotspot" id="qcoinBtn" style="left:1500px;top:880px;width:380px;height:280px"></button>
+  <!-- 其他支付 -->
+  <button class="hotspot" id="otherBtn" style="left:1980px;top:880px;width:380px;height:280px"></button>
+</div>
+
+  <script src="../data/item_base_name_map.js"></script>
+  <script src="../data/item_mapping.js"></script>
+  <script src="../data/item_box_config.js"></script>
+<script>
+// 档位对应的金额
+var tierAmounts = ['¥3.00', '¥6.00', '¥30.00', '¥68.00', '¥128.00', '¥198.00', '¥328.00', '¥648.00'];
+var tierCoins = [3, 6, 30, 68, 128, 198, 328, 648];
+var currentTier = 7; // 默认648档位
+
+// 从URL参数获取档位
+var urlParams = new URLSearchParams(window.location.search);
+var tierParam = urlParams.get('tier');
+if(tierParam !== null && !isNaN(tierParam)){
+  currentTier = parseInt(tierParam);
+}
+
+// 更新金额显示
+function updateAmount(){
+  document.getElementById('amountText').textContent = tierAmounts[currentTier] || '¥648.00';
+}
+updateAmount();
+// 监听父页面传递的档位信息
+window.addEventListener('message', function(e){
+  if(e.data && e.data.type === 'setTier' && e.data.tier !== undefined){
+    currentTier = e.data.tier;
+    updateAmount();
+  }
+});
+
+// 自适应缩放
+function layout(){
+  var s = Math.min(window.innerWidth/2912, window.innerHeight/1344);
+  document.getElementById('stage').style.transform = 'scale('+s+')';
+  document.getElementById('stage').style.left = (window.innerWidth - 2912*s)/2 + 'px';
+  document.getElementById('stage').style.top = (window.innerHeight - 1344*s)/2 + 'px';
+}
+window.addEventListener('resize', layout);
+layout();
+
+// 关闭按钮
+document.getElementById('closeBtn').addEventListener('click', function(){
+  window.parent.postMessage({type:'closePayment'}, '*');
+});
+
+// 支付方式按钮：点击后充值成功
+function paySuccess(){
+  var coins = tierCoins[currentTier] || 1296;
+  // 立即加CFM币
+  window.parent.postMessage({type:'paymentSuccess', coins: coins, tier: currentTier}, '*');
+  // 显示成功页面
+  var mask = document.getElementById('successMask');
+  if(mask) mask.style.display = 'flex';
+}
+// 点击成功页面后关闭
+document.addEventListener('DOMContentLoaded', function(){
+  var mask = document.getElementById('successMask');
+  if(mask){
+    mask.addEventListener('click', function(){
+      this.style.display = 'none';
+      window.parent.postMessage({type:'closePayment'}, '*');
+    });
+  }
+});
+document.getElementById('wechatBtn').addEventListener('click', paySuccess);
+document.getElementById('qqBtn').addEventListener('click', paySuccess);
+document.getElementById('qcoinBtn').addEventListener('click', paySuccess);
+document.getElementById('otherBtn').addEventListener('click', paySuccess);
+</script>
+
+<div class="success-mask" id="successMask">
+  <img class="success-img" src="../images/common/pages/recharge/payment_success_bg.png" alt="购买成功">
+</div>
+
+<script>
+// 禁止长按弹出菜单
+document.addEventListener('contextmenu', function(e){
+  e.preventDefault();
+  return false;
+});
+// 禁止图片拖拽
+document.addEventListener('dragstart', function(e){
+  if(e.target.tagName === 'IMG'){
+    e.preventDefault();
+    return false;
+  }
+});
+</script>
+</body>
+</html>

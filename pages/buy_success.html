@@ -1,0 +1,720 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta name="color-scheme" content="light only">
+  <meta name="supported-color-schemes" content="light">
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>神话臻藏夺宝 - 购买成功</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;-webkit-user-select:none;-moz-user-select:none;-ms-user-select:none;user-select:none;-webkit-touch-callout:none}
+html,body{width:100%;height:100%;overflow:hidden;background:#000}
+.stage{position:relative;width:2340px;height:1080px;transform-origin:top left;overflow:hidden}
+.bg-img{position:absolute;top:0;left:0;width:100%;height:100%;object-fit:cover;pointer-events:none}
+/* 道具格子 */
+.item-slot{position:absolute;width:200px;height:200px;opacity:0;transform:scale(1.5)}
+.item-slot .slot-bg{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;display:block}
+.item-slot .item-img{position:absolute;inset:15px;width:calc(100% - 30px);height:calc(100% - 30px);object-fit:contain;display:block;z-index:2;}
+.item-slot .item-name{position:absolute;left:-50px;right:-50px;top:210px;text-align:center;font-size:24px;font-weight:bold;color:#000;text-shadow:0 0 3px #fff,0 0 6px #fff;z-index:3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+/* 飞入动画 */
+.item-slot.fly-in{animation:flyIn 0.5s cubic-bezier(0.34,1.56,0.64,1) forwards}
+/* 白色品质光晕 */
+.item-slot.quality-white::after{content:'';position:absolute;inset:-20px;border-radius:12px;background:radial-gradient(circle,rgba(150,200,255,0.9),rgba(100,180,255,0.4) 40%,transparent 70%);animation:glowWhite 0.8s ease-out forwards;pointer-events:none}
+/* 紫色品质光晕 */
+.item-slot.quality-purple::after{content:'';position:absolute;inset:-20px;border-radius:12px;background:radial-gradient(circle,rgba(200,150,255,0.9),rgba(160,100,255,0.4) 40%,transparent 70%);animation:glowPurple 0.8s ease-out forwards;pointer-events:none}
+/* 金色品质 */
+@property --gold-angle{
+  syntax:'<angle>';
+  initial-value:0deg;
+  inherits:false;
+}
+.item-slot.quality-gold.fly-in{animation:flyInGold 0.5s cubic-bezier(0.34,1.56,0.64,1) forwards}
+.item-slot.quality-gold::before{content:'';position:absolute;inset:-15px;border-radius:6px;background:radial-gradient(circle,rgba(255,220,100,1),rgba(255,180,50,0.6) 30%,rgba(255,150,0,0.3) 60%,transparent 80%);animation:glowGold 1.2s ease-out forwards;pointer-events:none}
+.item-slot.quality-gold::after{content:'';position:absolute;inset:-12px;border-radius:6px;background:conic-gradient(from var(--gold-angle),transparent,rgba(255,215,0,0.28),transparent 25%,rgba(255,215,0,0.28),transparent 50%,rgba(255,215,0,0.28),transparent 75%,rgba(255,215,0,0.28),transparent);animation:rotateGoldAngle 5s linear infinite;pointer-events:none}
+/* 金色粒子 */
+.gold-particles{position:absolute;inset:0;pointer-events:none;overflow:hidden;z-index:3}
+.gold-particle{position:absolute;width:6px;height:6px;background:radial-gradient(circle,#ffd700,#ff8c00);border-radius:50%;animation:particleFloat 1.5s ease-out forwards}
+@keyframes flyIn{
+  0%{opacity:0;transform:scale(2) translateY(-40px)}
+  30%{opacity:1;transform:scale(1.1) translateY(0)}
+  60%{transform:scale(0.95)}
+  100%{opacity:1;transform:scale(1) translateY(0)}
+}
+@keyframes flyInGold{
+  0%{opacity:0;transform:scale(2.5) translateY(-50px) rotate(-10deg)}
+  20%{opacity:1;transform:scale(1.2) translateY(0) rotate(5deg)}
+  50%{transform:scale(0.9) rotate(-3deg)}
+  80%{transform:scale(1.05) rotate(1deg)}
+  100%{opacity:1;transform:scale(1) translateY(0) rotate(0)}
+}
+@keyframes glowWhite{
+  0%{opacity:0;transform:scale(1.5)}
+  30%{opacity:1;transform:scale(1.2)}
+  100%{opacity:0;transform:scale(1)}
+}
+@keyframes glowPurple{
+  0%{opacity:0;transform:scale(1.5)}
+  30%{opacity:1;transform:scale(1.2)}
+  100%{opacity:0;transform:scale(1)}
+}
+@keyframes glowGold{
+  0%{opacity:0;transform:scale(2)}
+  20%{opacity:1;transform:scale(1.5)}
+  50%{opacity:0.8;transform:scale(1.3)}
+  100%{opacity:0;transform:scale(1)}
+}
+@keyframes rotateGoldAngle{
+  to{--gold-angle:360deg}
+}
+@keyframes particleFloat{
+  0%{opacity:1;transform:translate(0,0) scale(1)}
+  100%{opacity:0;transform:translate(var(--tx),var(--ty)) scale(0)}
+}
+/* 确认按钮 */
+.confirm-btn{position:absolute;left:35%;top:75%;width:30%;height:12%;background:transparent;border:none;cursor:pointer;z-index:100}
+</style>
+<style>
+
+/* ===== 防止浏览器暗夜模式自动反转颜色 ===== */
+:root {
+  color-scheme: light only;
+  -webkit-color-scheme: light only;
+}
+html {
+  color-scheme: light only;
+  -webkit-color-scheme: light only;
+  background-color: #000 !important;
+}
+body {
+  color-scheme: light only;
+  -webkit-color-scheme: light only;
+  background-color: #000 !important;
+  -webkit-lightness-adjust: none !important;
+}
+/* 防止图片被反转 */
+img {
+  -webkit-filter: none !important;
+  filter: none !important;
+}
+/* ============================================ */
+
+</style>
+  <script src="../data/item_base_name_map.js"></script>
+<script src="../data/item_mapping.js"></script>
+  <script src="../data/item_box_config.js"></script>
+  <script src="../data/showcase_items.js"></script>
+</head>
+<body>
+<div class="stage" id="stage">
+  <img class="bg-img" id="bgImg" src="../images/common/pages/decompose/single_bg.png" alt="背景">
+  <div id="slotsContainer"></div>
+  <button class="confirm-btn" id="confirmBtn"></button>
+  
+  <!-- 金色出货动画弹窗 -->
+  <div id="goldRewardModal" style="position:absolute;inset:0;z-index:200;display:none;background:rgba(0,0,0,0.95);">
+    <iframe id="goldRewardIframe" style="width:100%;height:100%;border:none;"></iframe>
+  </div>
+</div>
+
+<!-- 出货动画页面模板（内嵌） -->
+<script>
+// ★ 提前定义 getItemImage 函数，避免被 textarea 模板影响
+function getItemImage(itemName, type) {
+  if(!itemName) return '';
+  type = type || 'small';
+  
+  // 先获取基础名称（去掉数量后缀）
+  var baseName = itemName.replace(/[×*]\d+$/, '');
+  
+  // 1. 先查映射表（处理特殊格式）
+  if(window.ITEM_BASE_NAME_MAP && window.ITEM_BASE_NAME_MAP[itemName]){
+    baseName = window.ITEM_BASE_NAME_MAP[itemName];
+  }
+  // 2. 去掉数量后缀后，再查一次映射表
+  else if(window.ITEM_BASE_NAME_MAP && window.ITEM_BASE_NAME_MAP[baseName]){
+    baseName = window.ITEM_BASE_NAME_MAP[baseName];
+  }
+  
+  // 3. 如果请求small.png，且该道具有showcase，则返回showcase.png（有showcase的盒子用showcase复用为small）
+  if(type === 'small' && window.ITEM_BOX_CONFIG && window.ITEM_BOX_CONFIG[baseName] && window.ITEM_BOX_CONFIG[baseName].has_showcase){
+    return '../images/items_box/' + baseName + '/showcase.png';
+  }
+  
+  return '../images/items_box/' + baseName + '/' + type + '.png';
+}
+</script>
+<textarea id="goldRewardTpl" style="display:none;"><!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>恭喜获得</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;-webkit-user-select:none;-moz-user-select:none;-ms-user-select:none;user-select:none;-webkit-touch-callout:none}
+html,body{width:100%;height:100%;overflow:hidden;background:#000;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif}
+
+/* 舞台（固定2340x1080，JS动态缩放） */
+.stage{position:relative;width:2340px;height:1080px;transform-origin:top left;overflow:hidden}
+
+/* 背景层 */
+.bg-layer{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;pointer-events:none}
+
+/* 刚开始的背景（光柱+粒子） */
+.bg-start{opacity:1;transition:opacity 0.5s ease-out;pointer-events:none}
+
+/* 出现按钮的背景（有文字+按钮） */
+.bg-button{opacity:0;transition:opacity 0.6s ease-out;pointer-events:none}
+
+/* 武器展示区域 */
+.weapon-wrap{position:absolute;top:45%;left:50%;transform:translate(-50%,-50%);z-index:10;text-align:center}
+
+/* 武器图片 */
+.weapon-img{width:1680px;height:1680px;object-fit:contain;opacity:0;pointer-events:none;animation:weaponIn 1s cubic-bezier(0.34,1.56,0.64,1) 1.2s forwards,weaponFloat 3s ease-in-out 2.2s infinite}
+
+@keyframes weaponIn{
+  0%{transform:translateX(900px) scale(0.4);opacity:0}
+  20%{opacity:1}
+  60%{transform:translateX(-40px) scale(1.15);opacity:1}
+  80%{transform:translateX(15px) scale(0.95)}
+  100%{transform:translateX(0) scale(1);opacity:1}
+}
+
+@keyframes weaponFloat{
+  0%,100%{transform:translateX(0) scale(1) translateY(0)}
+  50%{transform:translateX(0) scale(1) translateY(-18px)}
+}
+
+/* 武器光晕（金色云朵效果，跟着武器一起飞入） */
+.weapon-glow{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%) translateX(900px) scale(0.4);width:500px;height:350px;background:radial-gradient(ellipse at center,rgba(255,220,100,0.5) 0%,rgba(255,180,50,0.3) 30%,rgba(255,150,0,0.1) 50%,transparent 70%);border-radius:50%;filter:blur(30px);opacity:0;animation:weaponGlowIn 1s cubic-bezier(0.34,1.56,0.64,1) 1.2s forwards,weaponGlowPulse 3s ease-in-out 2.2s infinite;z-index:-1}
+
+@keyframes weaponGlowIn{
+  0%{transform:translate(-50%,-50%) translateX(900px) scale(0.4);opacity:0}
+  20%{opacity:0.8}
+  60%{transform:translate(-50%,-50%) translateX(-40px) scale(1.15);opacity:0.9}
+  80%{transform:translate(-50%,-50%) translateX(15px) scale(0.95)}
+  100%{transform:translate(-50%,-50%) translateX(0) scale(1);opacity:0.8}
+}
+
+@keyframes weaponGlowPulse{
+  0%,100%{transform:translate(-50%,-50%) translateX(0) scale(1);opacity:0.7}
+  50%{transform:translate(-50%,-50%) translateX(0) scale(1.1);opacity:0.9}
+}
+
+/* 道具名称（动态叠加在背景上） */
+.item-name{position:absolute;top:205px;left:95px;font-size:40px;color:#f7e6c2;font-weight:normal;text-shadow:0 2px 4px rgba(0,0,0,0.8);z-index:15;opacity:0;transition:opacity 0.6s ease-out,transform 0.6s ease-out;transform:translateX(-30px);letter-spacing:2px}
+
+@keyframes nameIn{
+  0%{transform:translateX(-30px);opacity:0}
+  100%{transform:translateX(0);opacity:1}
+}
+
+/* 确定按钮透明点击区域 */
+.confirm-hitbox{position:absolute;bottom:60px;left:50%;transform:translateX(-50%);width:200px;height:70px;cursor:pointer;z-index:20;opacity:0}
+
+/* 响应式 */
+@media (max-width:768px){
+  .weapon-img{width:180px;height:180px}
+  .weapon-glow{width:260px;height:260px}
+  .confirm-hitbox{width:120px;height:40px;bottom:5%}
+}
+</style>
+</head>
+<body>
+<div class="stage" id="stage">
+  <!-- 刚开始的背景（光柱+粒子） -->
+  <img class="bg-layer bg-start" id="bgStart" src="" alt="">
+  
+  <!-- 出现按钮的背景（无道具名称，有"恭喜获得"+按钮） -->
+  <img class="bg-layer bg-button" id="bgButton" src="" alt="">
+  
+  <!-- 道具名称（动态叠加） -->
+  <div class="item-name" id="itemName">AK47-雷暴</div>
+  
+  <!-- 武器展示 -->
+  <div class="weapon-wrap">
+    <div class="weapon-glow"></div>
+    <img class="weapon-img" id="weaponImg" src="" alt="">
+  </div>
+  
+  <!-- 确定按钮透明点击区域 -->
+  <div class="confirm-hitbox" id="confirmHitbox"></div>
+</div>
+
+<script>
+
+// 盒子函数：根据道具名称和图片类型获取图片路径
+// 支持带数量的道具名称，如"近战夺宝积分×3"、"200钻石宝箱"
+function getItemImage(itemName, type) {
+  if(!itemName) return '';
+  type = type || 'small';
+  
+  // 先获取基础名称（去掉数量后缀）
+  var baseName = itemName.replace(/[×*]\d+$/, '');
+  
+  // 1. 先查映射表（处理特殊格式）
+  if(window.ITEM_BASE_NAME_MAP && window.ITEM_BASE_NAME_MAP[itemName]){
+    baseName = window.ITEM_BASE_NAME_MAP[itemName];
+  }
+  // 2. 去掉数量后缀后，再查一次映射表
+  else if(window.ITEM_BASE_NAME_MAP && window.ITEM_BASE_NAME_MAP[baseName]){
+    baseName = window.ITEM_BASE_NAME_MAP[baseName];
+  }
+  
+  // 3. 如果请求small.png，且该道具有showcase，则返回showcase.png（有showcase的盒子用showcase复用为small）
+  if(type === 'small' && window.ITEM_BOX_CONFIG && window.ITEM_BOX_CONFIG[baseName] && window.ITEM_BOX_CONFIG[baseName].has_showcase){
+    return '../images/items_box/' + baseName + '/showcase.png';
+  }
+  
+  return '../images/items_box/' + baseName + '/' + type + '.png';
+}
+
+// ===== 出货动画确定键音效 =====
+var confirmAudioPool = [];
+var confirmAudioIndex = 0;
+for(var i = 0; i < 3; i++){
+  var ca = new Audio('../audio/gacha/confirm.m4a');
+  ca.preload = 'auto';
+  confirmAudioPool.push(ca);
+}
+function playConfirmSound(){
+  try{
+    var audio = confirmAudioPool[confirmAudioIndex];
+    confirmAudioIndex = (confirmAudioIndex + 1) % 3;
+    audio.currentTime = 0;
+    audio.play().catch(function(e){});
+  }catch(e){}
+}
+// ===== 出货动画确定键音效结束 =====
+
+// ===== 出货动画开始音效（第一个背景出现时播放）=====
+var showcaseStartAudioPool = [];
+var showcaseStartAudioIndex = 0;
+for(var i = 0; i < 3; i++){
+  var ssa = new Audio('../audio/gacha/showcase_start.m4a');
+  ssa.preload = 'auto';
+  showcaseStartAudioPool.push(ssa);
+}
+function playShowcaseStartSound(){
+  try{
+    var audio = showcaseStartAudioPool[showcaseStartAudioIndex];
+    showcaseStartAudioIndex = (showcaseStartAudioIndex + 1) % 3;
+    audio.currentTime = 0;
+    audio.play().catch(function(e){});
+  }catch(e){}
+}
+// ===== 出货动画开始音效结束 =====
+
+
+
+// 自适应缩放（和项目其他页面保持一致）
+function layout(){
+  var s = Math.min(window.innerWidth/2340, window.innerHeight/1080);
+  document.getElementById('stage').style.transform = 'scale('+s+')';
+  document.getElementById('stage').style.left = (window.innerWidth - 2340*s)/2 + 'px';
+  document.getElementById('stage').style.top = (window.innerHeight - 1080*s)/2 + 'px';
+}
+window.addEventListener('resize', layout);
+layout();
+
+// 从URL参数获取道具信息
+const urlParams = new URLSearchParams(window.location.search);
+let itemName = urlParams.get('name') || 'AK47-雷暴';
+const itemImage = urlParams.get('image') || '';
+
+// 设置武器图片和道具名称
+if (itemImage) {
+  document.getElementById('weaponImg').src = itemImage;
+}
+document.getElementById('itemName').textContent = itemName;
+
+// 监听父页面的postMessage，接收道具名称（srcdoc方式用）
+window.addEventListener('message', function(e){
+  if(e.data && e.data.type === 'setItemName' && e.data.name){
+    playShowcaseStartSound(); // 出货动画开始，第一个背景出现，播放音效
+    itemName = e.data.name;
+    document.getElementById('itemName').textContent = itemName;
+    if(e.data.image){
+      var weaponImg = document.getElementById('weaponImg');
+      if(weaponImg){
+        weaponImg.src = e.data.image;
+        weaponImg.style.display = 'block';
+      }
+    }
+    // 如果有自定义背景图片，设置背景图片
+    if(e.data.bgStart){
+      var bgStartEl = document.getElementById('bgStart');
+      if(bgStartEl){
+        bgStartEl.src = e.data.bgStart;
+        bgStartEl.style.opacity = '1';
+      }
+    }
+    if(e.data.bgButton){
+      var bgButtonEl = document.getElementById('bgButton');
+      if(bgButtonEl){
+        bgButtonEl.src = e.data.bgButton;
+      }
+    }
+    // 2.3秒后切换到有按钮的背景，同时显示道具名称（收到道具信息后才开始计时，避免发送仓库时定时器提前触发）
+    setTimeout(() => {
+      document.getElementById('bgStart').style.opacity = '0';
+      document.getElementById('bgButton').style.opacity = '1';
+      var itemNameEl = document.getElementById('itemName');
+      if(itemNameEl){
+        itemNameEl.style.opacity = '1';
+        itemNameEl.style.transform = 'translateX(0)';
+      }
+    }, 2300);
+  }
+});
+
+
+
+// 确定按钮点击
+const confirmHitbox = document.getElementById('confirmHitbox');
+
+// 2.6秒后确定按钮可以点击
+setTimeout(() => {
+  confirmHitbox.style.opacity = '0.01'; // 几乎透明但可点击
+  confirmHitbox.addEventListener('click', onConfirm);
+}, 2600);
+
+function onConfirm(){
+  playConfirmSound(); // 播放出货动画确定键音效
+  // 向父页面发送关闭消息
+  parent.postMessage({
+    type: 'closeGoldReward',
+    item: itemName
+  }, '*');
+}
+
+// 监听ESC键关闭
+document.addEventListener('keydown', function(e){
+  if(e.key === 'Escape' && confirmHitbox.style.opacity !== '0'){
+    onConfirm();
+  }
+});
+</script>
+
+<script>
+// 禁止长按弹出菜单
+document.addEventListener('contextmenu', function(e){
+  e.preventDefault();
+  return false;
+});
+// 禁止图片拖拽
+document.addEventListener('dragstart', function(e){
+  if(e.target.tagName === 'IMG'){
+    e.preventDefault();
+    return false;
+  }
+});
+</script>
+</body>
+</html>
+</textarea>
+
+<script>
+
+// ===== 点击音效 =====
+var clickAudioPool = [];
+var clickAudioIndex = 0;
+for(var i = 0; i < 5; i++){
+  var ca = new Audio('../audio/gacha/click.m4a');
+  ca.preload = 'auto';
+  clickAudioPool.push(ca);
+}
+function playClickSound(){
+  try{
+    var audio = clickAudioPool[clickAudioIndex];
+    clickAudioIndex = (clickAudioIndex + 1) % 5;
+    audio.currentTime = 0;
+    audio.play().catch(function(e){});
+  }catch(e){}
+}
+// ===== 点击音效结束 =====
+
+
+// ===== 恭喜获得页面音效 =====
+var rewardAudioPool = [];
+var rewardAudioIndex = 0;
+for(var i = 0; i < 3; i++){
+  var ra = new Audio('../audio/gacha/reward.m4a');
+  ra.preload = 'auto';
+  rewardAudioPool.push(ra);
+}
+function playRewardSound(){
+  try{
+    var audio = rewardAudioPool[rewardAudioIndex];
+    rewardAudioIndex = (rewardAudioIndex + 1) % 3;
+    audio.currentTime = 0;
+    audio.play().catch(function(e){});
+  }catch(e){}
+}
+// ===== 恭喜获得页面音效结束 =====
+
+// 道具名称到item小图路径的映射表（恭喜获得页面统一用item小图显示）
+
+
+// ===== 出货动画开始音效（在父页面播放，避免iframe自动播放限制）=====
+var showcaseStartAudioPool = [];
+var showcaseStartAudioIndex = 0;
+for(var i = 0; i < 3; i++){
+  var ssa = new Audio('../audio/gacha/showcase_start.m4a');
+  ssa.preload = 'auto';
+  showcaseStartAudioPool.push(ssa);
+}
+function playShowcaseStartSound(){
+  try{
+    var audio = showcaseStartAudioPool[showcaseStartAudioIndex];
+    showcaseStartAudioIndex = (showcaseStartAudioIndex + 1) % 3;
+    audio.currentTime = 0;
+    audio.play().catch(function(e){});
+  }catch(e){}
+}
+// ===== 出货动画开始音效结束 =====
+
+// 三种品质的黑色小方块图片
+
+var BG_TEN = '../images/common/pages/decompose/single_bg.png';
+var BG_SINGLE = '../images/common/pages/decompose/single_bg.png';
+
+// ========== 道具概率表（45个道具）==========
+// 获取URL参数
+function getUrlParam(name){
+  var reg = new RegExp('(^|&)' + name + '=([^&]*)(&|$)');
+  var r = window.location.search.substr(1).match(reg);
+  if(r != null) return decodeURIComponent(r[2]);
+  return null;
+}
+
+// 获取指定奖励（从URL参数）
+function get指定Reward(){
+  var name = getUrlParam('name');
+  var quality = getUrlParam('quality') || 'gold';
+  if(name){
+    return {name: name, quality: quality, image: null};
+  }
+  return null;
+}
+
+// 单抽格子位置
+var singlePosition = {x:1070, y:440};
+// 自适应缩放
+function layout(){
+  var s = Math.min(window.innerWidth/2340, window.innerHeight/1080);
+  document.getElementById('stage').style.transform = 'scale('+s+')';
+  document.getElementById('stage').style.left = (window.innerWidth - 2340*s)/2 + 'px';
+  document.getElementById('stage').style.top = (window.innerHeight - 1080*s)/2 + 'px';
+}
+window.addEventListener('resize', layout);
+layout();
+var gachaResults = [];
+var slotsContainer = document.getElementById('slotsContainer');
+var bgImg = document.getElementById('bgImg');
+
+// 检查是否有指定奖励
+var 指定Item = get指定Reward();
+var isBuySuccessModal = false; // 标记是不是购买成功弹窗
+var rewardReady = false; // 标记奖励是否准备好
+
+function createGoldParticles(slot){
+  var particles = document.createElement('div');
+  particles.className = 'gold-particles';
+  for(var i = 0; i < 12; i++){
+    var p = document.createElement('div');
+    p.className = 'gold-particle';
+    p.style.left = (40 + Math.random() * 120) + 'px';
+    p.style.top = (40 + Math.random() * 120) + 'px';
+    p.style.setProperty('--tx', (Math.random() - 0.5) * 150 + 'px');
+    p.style.setProperty('--ty', (Math.random() - 0.5) * 150 + 'px');
+    p.style.animationDelay = (Math.random() * 0.3) + 's';
+    particles.appendChild(p);
+  }
+  slot.appendChild(particles);
+}
+
+function createSlot(x, y, item){
+  if(!item) return null;
+  var it = item;
+  var q = it.quality;
+  var slot = document.createElement('div');
+  slot.className = 'item-slot quality-' + q;
+  slot.style.left = x + 'px';
+  slot.style.top = y + 'px';
+  var slotBg = document.createElement('img');
+  slotBg.className = 'slot-bg';
+  slotBg.src = SLOT_IMAGES[q];
+  slot.appendChild(slotBg);
+  if(it.name || it.image){
+    var itemImg = document.createElement('img');
+    itemImg.className = 'item-img';
+    // 优先使用传入的image，没有则用盒子函数获取道具图片
+    if(it.image){
+      itemImg.src = it.image;
+    }else if(it.name){
+      var smallImgSrc = getItemImage(it.name, 'small');
+      itemImg.src = smallImgSrc;
+    }
+    slot.appendChild(itemImg);
+  }
+  // 道具名称
+  var itemName = document.createElement('div');
+  itemName.className = 'item-name';
+  itemName.textContent = it.name || '';
+  slot.appendChild(itemName);
+  slot.item = it;
+  return slot;
+}
+
+// ========== 金色出货动画 ==========
+// 有出货动画的7个道具
+// 出货动画道具图片映射表
+;
+
+
+// 特殊出货动画的背景图片映射表
+
+
+// 判断道具是否需要出货动画
+function needShowcase(item){
+  if(!item || !item.name) return false;
+  var name = item.name.replace(/×\d+$/, '').replace(/\*\d+$/, '');
+  return SHOWCASE_ITEMS.indexOf(name) !== -1;
+}
+
+// 显示金色出货动画
+function showGoldReward(itemName, callback, itemImage){
+  // 去掉数量后缀（比如"QBZ03-王者蔷薇×2" -> "QBZ03-王者蔷薇"）
+  itemName = itemName.replace(/×\d+$/, '').replace(/\*\d+$/, '');
+  var modal = document.getElementById('goldRewardModal');
+  var iframe = document.getElementById('goldRewardIframe');
+  var tpl = document.getElementById('goldRewardTpl').value;
+  // 如果没有传入图片，从映射表中查找
+  if(!itemImage && SHOWCASE_IMAGES[itemName]){
+    itemImage = SHOWCASE_IMAGES[itemName];
+  }
+  
+  iframe.srcdoc = tpl;
+  
+  iframe.onload = function(){
+    try{
+      var bgImages = SHOWCASE_BG_IMAGES[itemName] || null;
+      iframe.contentWindow.postMessage({type:'setItemName', name:itemName, image:itemImage, bgStart: bgImages ? bgImages.bgStart : null, bgButton: bgImages ? bgImages.bgButton : null}, '*');
+    }catch(e){}
+    // 等背景设置完成后再显示，避免闪烁
+    setTimeout(function(){
+      modal.style.display = 'block';
+    }, 50);
+  };
+  
+  var messageHandler = function(e){
+    if(e.data && e.data.type === 'closeGoldReward'){
+      window.removeEventListener('message', messageHandler);
+      iframe.onload = null;
+      modal.style.display = 'none';
+      if(callback) callback();
+    }
+  };
+  window.addEventListener('message', messageHandler);
+}
+
+function playSingle(){
+  bgImg.src = BG_SINGLE;
+  slotsContainer.innerHTML = '';
+  gachaResults = [];
+  // 如果奖励还没准备好，就不显示
+  if(!rewardReady && !指定Item){
+    return;
+  }
+  // 如果有URL参数指定的道具，就用指定的，否则随机
+  if(!指定Item) return;
+  var item = 指定Item;
+  var slot = createSlot(singlePosition.x, singlePosition.y, item);
+  slotsContainer.appendChild(slot);
+  gachaResults.push(slot.item);
+  
+  // 判断是否需要出货动画
+  if(needShowcase(item)){
+    playShowcaseStartSound(); // 出货动画开始，第一个背景出现，播放音效（在父页面播放，避免iframe限制）
+    showGoldReward(item.name, function(){
+      setTimeout(function(){
+        if(slot.item && slot.item.quality === 'gold') createGoldParticles(slot);
+        slot.classList.add('fly-in');
+      }, 100);
+    });
+  }else{
+    setTimeout(function(){
+      if(slot.item && slot.item.quality === 'gold') createGoldParticles(slot);
+      slot.classList.add('fly-in');
+    }, 100);
+  }
+}
+
+document.getElementById('confirmBtn').addEventListener('click', function(){
+  playClickSound(); // 播放点击音效
+  // 统计获得的积分（盒子架构：从ITEM_BEHAVIOR读取，不硬编码）
+  var pointsEarned = 0;
+  var rewards = [];
+  for(var i = 0; i < gachaResults.length; i++){
+    var item = gachaResults[i];
+    if(item && item.name){
+      rewards.push(item);
+      var behavior = (window.ITEM_BEHAVIOR && window.ITEM_BEHAVIOR[item.name]) ? window.ITEM_BEHAVIOR[item.name] : null;
+      if(behavior && behavior.gacha_behavior === 'points'){
+        var pointsType = behavior.points_type || 'exchange';
+        // 只统计兑换币类型（exchange），钻石等其他类型不计入兑换币
+        if(pointsType === 'exchange'){
+          var pointsAmount = behavior.points_amount || 1;
+          pointsEarned += pointsAmount;
+        }
+      }
+    }
+  }
+  // 如果是购买成功弹窗，发送closeBuySuccess消息
+  if(isBuySuccessModal){
+    window.parent.postMessage({type:'closeBuySuccess'}, '*');
+  }else{
+    window.parent.postMessage({type:'gachaClose', points: pointsEarned, rewards: rewards}, '*');
+  }
+});
+
+// 监听父页面的postMessage，接收奖励内容
+window.addEventListener('message', function(e){
+  if(e.data && e.data.type === 'setBuyReward'){
+    console.log('[buy_success] 收到 setBuyReward:', e.data.name, e.data.quality, 'showcase:', e.data.showcase);
+    isBuySuccessModal = true;
+    rewardReady = true;
+    指定Item = {name: e.data.name, quality: e.data.quality || 'gold', image: e.data.image || null};
+    slotsContainer.innerHTML = '';
+    gachaResults = [];
+    var slot = createSlot(singlePosition.x, singlePosition.y, 指定Item);
+    console.log('[buy_success] 创建 slot:', slot, 'itemImg src:', slot.querySelector('.item-img') ? slot.querySelector('.item-img').src : 'no img');
+    slotsContainer.appendChild(slot);
+    gachaResults.push(slot.item);
+    // 根据showcase参数决定是否显示出货动画
+    if(e.data.showcase){
+      // 需要出货动画
+      playShowcaseStartSound();
+      showGoldReward(e.data.name, function(){
+        setTimeout(function(){
+          if(slot.item && slot.item.quality === 'gold') createGoldParticles(slot);
+          slot.classList.add('fly-in');
+        }, 100);
+      });
+    }else{
+      // 不需要出货动画，直接显示飞入效果
+      setTimeout(function(){
+        if(slot.item && slot.item.quality === 'gold') createGoldParticles(slot);
+        slot.classList.add('fly-in');
+      }, 100);
+    }
+  }
+});
+
+window.onload = function(){
+  // playRewardSound(); // 已移到主页面播放，避免重音
+  playSingle();
+};
+</script>
+</body>
+</html>

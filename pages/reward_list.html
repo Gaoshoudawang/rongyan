@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta name="color-scheme" content="light only">
+  <meta name="supported-color-schemes" content="light">
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>奖励一览</title>
+  <script src="../data/item_base_name_map.js"></script>
+  <script src="../data/item_box_config.js"></script>
+<script src="../data/gacha_base.js"></script>
+<script src="../data/item_mapping.js"></script>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{width:100%;height:100%;overflow:hidden;background:#000}
+.stage{position:relative;width:2340px;height:1080px;transform-origin:top left;overflow:hidden}
+.bg-img{position:absolute;top:0;left:0;width:100%;height:100%;object-fit:cover;pointer-events:none}
+/* 滚动容器 */
+.scroll-container{position:absolute;top:120px;left:80px;right:80px;bottom:80px;overflow-y:auto;overflow-x:hidden;padding:20px;z-index:10}
+.scroll-container::-webkit-scrollbar{width:12px}
+.scroll-container::-webkit-scrollbar-track{background:rgba(0,0,0,0.3);border-radius:6px}
+.scroll-container::-webkit-scrollbar-thumb{background:rgba(255,215,0,0.6);border-radius:6px}
+/* 品质标题 */
+.quality-title{width:100%;font-size:42px;font-weight:bold;margin:40px 0 30px 0;padding-left:20px;border-left:8px solid}
+.quality-title.red{color:#ff4444;text-shadow:0 0 10px rgba(255,68,68,0.8);border-left-color:#ff4444}
+.quality-title.gold{color:#ffd700;text-shadow:0 0 10px rgba(255,215,0,0.8);border-left-color:#ffd700}
+.quality-title.purple{color:#c77dff;text-shadow:0 0 10px rgba(199,125,255,0.8);border-left-color:#c77dff}
+/* 道具网格 */
+.items-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:60px;margin-bottom:100px}
+/* 道具格子 */
+.item-slot{position:relative;width:100%;aspect-ratio:1;display:flex;align-items:center;justify-content:center}
+.item-slot .slot-bg{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;display:block;pointer-events:none}
+.item-slot .item-img{position:absolute;inset:15px;width:calc(100% - 30px);height:calc(100% - 30px);object-fit:contain;display:block;z-index:2;pointer-events:none}
+.item-slot .item-name{position:absolute;left:5px;top:20px;right:auto;text-align:left;font-size:30px;font-weight:bold;color:#ddd;text-shadow:0 2px 6px rgba(0,0,0,0.95),0 0 10px rgba(0,0,0,0.8);z-index:3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:90%;display:flex;align-items:center;gap:6px}
+.item-slot .item-name .showcase-icon{width:30px;height:30px;object-fit:contain;flex-shrink:0}
+.item-slot .item-prob{position:absolute;left:-40px;right:-40px;top:calc(105% + 36px);text-align:center;font-size:24px;font-weight:bold;z-index:3}
+.item-slot .item-prob .prob-label{color:#ffd700;text-shadow:0 0 5px rgba(0,0,0,0.9)}
+.item-slot .item-prob .prob-value{color:#000;text-shadow:0 0 3px #fff,0 0 6px #fff}
+/* 关闭按钮 */
+.close-btn{position:absolute;left:40px;top:30px;width:120px;height:120px;background:transparent;border:none;cursor:pointer;z-index:200}
+
+/* 禁止长按查看图片/保存图片 */
+img{
+  -webkit-touch-callout:none;
+  -webkit-user-select:none;
+  user-select:none;
+  -webkit-tap-highlight-color:transparent;
+}
+/* 禁止全局右键菜单 */
+*{
+  -webkit-touch-callout:none;
+  -webkit-user-select:none;
+  user-select:none;
+}
+</style>
+<style>
+
+/* ===== 防止浏览器暗夜模式自动反转颜色 ===== */
+:root {
+  color-scheme: light only;
+  -webkit-color-scheme: light only;
+}
+html {
+  color-scheme: light only;
+  -webkit-color-scheme: light only;
+  background-color: #000 !important;
+}
+body {
+  color-scheme: light only;
+  -webkit-color-scheme: light only;
+  background-color: #000 !important;
+  -webkit-lightness-adjust: none !important;
+}
+/* 防止图片被反转 */
+img {
+  -webkit-filter: none !important;
+  filter: none !important;
+}
+/* ============================================ */
+
+</style>
+</head>
+<body>
+<div class="stage" id="stage">
+  <img class="bg-img" src="../images/common/pages/reward/bg.png" alt="背景">
+  <button class="close-btn" id="closeBtn"></button>
+  <div class="scroll-container" id="scrollContainer">
+    <!-- 道具列表由JS动态渲染 -->
+  </div>
+</div>
+
+<script>
+function getItemImage(itemName, type) {
+  if(!itemName) return '';
+  type = type || 'small';
+  
+  // 先获取道具的基础名称（用于查找ITEM_BOX_CONFIG）
+  var baseNameForConfig = itemName;
+  if(window.ITEM_BASE_NAME_MAP && window.ITEM_BASE_NAME_MAP[itemName]){
+    baseNameForConfig = window.ITEM_BASE_NAME_MAP[itemName];
+  } else {
+    var cleanNameForConfig = itemName.replace(/[×*]\d+$/, '');
+    if(window.ITEM_BASE_NAME_MAP && window.ITEM_BASE_NAME_MAP[cleanNameForConfig]){
+      baseNameForConfig = window.ITEM_BASE_NAME_MAP[cleanNameForConfig];
+    } else {
+      baseNameForConfig = cleanNameForConfig;
+    }
+  }
+  
+  // 检查道具是否有showcase，如果请求small但有showcase，返回showcase（复用）
+  if(type === 'small' && window.ITEM_BOX_CONFIG && window.ITEM_BOX_CONFIG[baseNameForConfig] && window.ITEM_BOX_CONFIG[baseNameForConfig].has_showcase){
+    return '../images/items_box/' + baseNameForConfig + '/showcase.png';
+  }
+  
+  // 1. 先查映射表（处理特殊格式，如"M4A1-雷霆王者-熔岩之触" → "熔岩之触"）
+  if(window.ITEM_BASE_NAME_MAP && window.ITEM_BASE_NAME_MAP[itemName]){
+    var baseName = window.ITEM_BASE_NAME_MAP[itemName];
+    return '../images/items_box/' + baseName + '/' + type + '.png';
+  }
+  // 2. 再用正则去掉末尾的×数字（处理标准格式，如"熔岩兑换币×3" → "熔岩兑换币"）
+  var cleanName = itemName.replace(/[×*]\d+$/, '');
+  // 3. 去掉数量后缀后，再查一次映射表
+  if(window.ITEM_BASE_NAME_MAP && window.ITEM_BASE_NAME_MAP[cleanName]){
+    var baseName2 = window.ITEM_BASE_NAME_MAP[cleanName];
+    return '../images/items_box/' + baseName2 + '/' + type + '.png';
+  }
+  return '../images/items_box/' + cleanName + '/' + type + '.png';
+}
+
+// 自适应缩放
+function layout(){
+  var s = Math.min(window.innerWidth/2340, window.innerHeight/1080);
+  document.getElementById('stage').style.transform = 'scale('+s+')';
+  document.getElementById('stage').style.left = (window.innerWidth - 2340*s)/2 + 'px';
+  document.getElementById('stage').style.top = (window.innerHeight - 1080*s)/2 + 'px';
+}
+window.addEventListener('resize', layout);
+layout();
+
+// 关闭按钮
+document.getElementById('closeBtn').addEventListener('click', function(){
+  window.parent.postMessage({type: 'closeReward'}, '*');
+});
+
+// 品质边框图片映射
+// 品质名称映射
+var QUALITY_NAME_MAP = {
+  'red': '红色品质',
+  'gold': '金色品质',
+  'purple': '紫色品质',
+  'white': '白色品质'
+};
+
+// 品质边框图片映射
+var SLOT_BG_MAP = {
+  'red': '../images/common/slot/red.png',
+  'gold': '../images/common/slot/gold.png',
+  'purple': '../images/common/slot/purple.png',
+  'white': '../images/common/slot/white.png'
+};
+
+// 从URL参数获取奖池ID
+function getPoolIdFromUrl(){
+  var urlParams = new URLSearchParams(window.location.search);
+  return urlParams.get('pool') || 'm4';
+}
+
+// 从概率表读取道具数据并渲染
+function renderRewardList(){
+  var poolId = getPoolIdFromUrl();
+  // 根据奖池ID获取对应的道具列表
+  var pool = (window.GACHA_POOLS && window.GACHA_POOLS[poolId]) ? window.GACHA_POOLS[poolId] : (window.GACHA_BASE_POOL || []);
+  var container = document.getElementById('scrollContainer');
+  
+  if(pool.length === 0){
+    container.innerHTML = '<div style="color:#fff;font-size:36px;text-align:center;padding:100px;">暂无道具数据</div>';
+    return;
+  }
+  
+  // 按品质分类
+  var itemsByQuality = {
+    'red': [],
+    'gold': [],
+    'purple': [],
+    'white': []
+  };
+  
+  for(var i = 0; i < pool.length; i++){
+    var item = pool[i];
+    var quality = item.quality || 'white';
+    if(!itemsByQuality[quality]){
+      itemsByQuality[quality] = [];
+    }
+    itemsByQuality[quality].push(item);
+  }
+  
+  // 按品质顺序渲染（红色、金色、紫色、白色）
+  var qualityOrder = ['red', 'gold', 'purple', 'white'];
+  var html = '';
+  
+  for(var q = 0; q < qualityOrder.length; q++){
+    var quality = qualityOrder[q];
+    var items = itemsByQuality[quality] || [];
+    
+    if(items.length === 0) continue;
+    
+    // 品质标题
+    var qualityName = QUALITY_NAME_MAP[quality] || quality;
+    html += '<div class="quality-title ' + quality + '">' + qualityName + ' (' + items.length + '个)</div>';
+    
+    // 道具网格
+    html += '<div class="items-grid">';
+    
+    for(var j = 0; j < items.length; j++){
+      var item = items[j];
+      var slotBg = SLOT_BG_MAP[quality] || SLOT_BG_MAP['white'];
+      var itemImg = getItemImage(item.name, 'small') || item.image || '';
+      var itemName = item.name || '';
+      // 判断是否有出货动画，有则添加v标
+      var hasShowcase = false;
+      try{
+        if(window.ITEM_BOX_CONFIG && window.ITEM_BOX_CONFIG[itemName]){
+          hasShowcase = window.ITEM_BOX_CONFIG[itemName].has_showcase || false;
+        }
+      }catch(e){}
+      var nameHtml = itemName;
+      if(hasShowcase){
+        nameHtml = '<img class="showcase-icon" src="../images/common/showcase_icon.png">' + itemName;
+      }
+      var prob = item.prob || item.weight || 0;
+      
+      // 格式化概率
+      var probText = prob + '%';
+      if(typeof prob === 'number'){
+        if(prob < 0.001){
+          probText = prob.toFixed(4) + '%';
+        }else if(prob < 0.01){
+          probText = prob.toFixed(3) + '%';
+        }else if(prob < 0.1){
+          probText = prob.toFixed(2) + '%';
+        }else{
+          probText = prob.toFixed(1) + '%';
+        }
+      }
+      
+      html += '<div class="item-slot quality-' + quality + '">';
+      html += '<img class="slot-bg" src="' + slotBg + '">';
+      html += '<img class="item-img" src="' + itemImg + '">';
+      html += '<div class="item-name">' + nameHtml + '</div>';
+      html += '<div class="item-prob"><span class="prob-label">概率：</span><span class="prob-value">' + probText + '</span></div>';
+      html += '</div>';
+    }
+    
+    html += '</div>';
+  }
+  
+  container.innerHTML = html;
+}
+
+// 页面加载完成后渲染
+if(document.readyState === 'loading'){
+  document.addEventListener('DOMContentLoaded', renderRewardList);
+}else{
+  renderRewardList();
+}
+</script>
+
+<script>
+// 禁止长按弹出菜单
+document.addEventListener('contextmenu', function(e){
+  e.preventDefault();
+  return false;
+});
+// 禁止图片拖拽
+document.addEventListener('dragstart', function(e){
+  if(e.target.tagName === 'IMG'){
+    e.preventDefault();
+    return false;
+  }
+});
+</script>
+</body>
+</html>

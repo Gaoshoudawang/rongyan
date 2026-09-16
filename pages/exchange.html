@@ -1,0 +1,457 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta name="color-scheme" content="light only">
+  <meta name="supported-color-schemes" content="light">
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>熔岩兑换</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{width:100%;height:100%;background:#000;overflow:hidden;font-family:"Microsoft YaHei",sans-serif}
+.stage{position:relative;width:2340px;height:1080px;transform-origin:top left;overflow:hidden}
+.bg-img{position:absolute;top:0;left:0;width:100%;height:100%;object-fit:cover;pointer-events:none;user-select:none;-webkit-user-drag:none;display:block}
+.hotspot-layer{position:absolute;inset:0;z-index:10}
+.hotspot{position:absolute;pointer-events:auto;cursor:pointer;border-radius:6px;transition:background .1s}
+.hotspot:active{background:rgba(255,215,0,.18)}
+.hotspot.selected{background:rgba(255,215,0,.1)}
+.hotspot.disabled{cursor:default}
+.hotspot.disabled:active{background:transparent}
+
+/* 币显示（右上角）- 与首页保持一致 */
+.coin-display{
+  position:absolute;
+  top:16px;
+  display:flex;
+  align-items:center;
+  gap:6px;
+  z-index:20;
+  pointer-events:none;
+}
+.coin-icon{
+  height:44px;
+  width:auto;
+  object-fit:contain;
+  display:block;
+}
+.coin-num{
+  font-size:32px;
+  font-weight:bold;
+  color:#fff;
+  text-shadow:0 0 5px rgba(0,0,0,0.8);
+  line-height:44px;
+}
+.flash{position:absolute;width:80px;height:80px;border-radius:50%;background:radial-gradient(circle,rgba(255,255,200,.8),transparent 70%);transform:translate(-50%,-50%) scale(0);animation:flashBurst .4s ease-out forwards;pointer-events:none;z-index:99}
+@keyframes flashBurst{0%{transform:translate(-50%,-50%) scale(0);opacity:1}100%{transform:translate(-50%,-50%) scale(2.5);opacity:0}}
+.toast{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%) scale(.8);background:linear-gradient(160deg,#8a92a8 0%,#6a7288 30%,#5a6278 60%,#4a5268 100%);border:2px solid #505868;border-radius:4px;padding:22px 45px;color:#fff;font-size:22px;font-weight:bold;z-index:9999;opacity:0;transition:all .3s;pointer-events:none;box-shadow:0 0 40px rgba(0,0,0,.6);white-space:nowrap;text-shadow:0 1px 2px rgba(0,0,0,0.5)}
+.toast.show{opacity:1;transform:translate(-50%,-50%) scale(1)}
+
+.hotspot,
+.hotspot:active,
+.hotspot:hover,
+.hotspot:focus,
+.hotspot.pulse,
+.hotspot.selected{
+  border:none!important;
+  background:transparent!important;
+  outline:none!important;
+  box-shadow:none!important;
+  animation:none!important;
+}
+.hotspot-label{display:none!important}
+
+img{
+  -webkit-touch-callout:none;
+  -webkit-user-select:none;
+  user-select:none;
+  -webkit-tap-highlight-color:transparent;
+}
+*{
+  -webkit-touch-callout:none;
+  -webkit-user-select:none;
+  user-select:none;
+}
+:root {
+  color-scheme: light only;
+  -webkit-color-scheme: light only;
+}
+html {
+  color-scheme: light only;
+  -webkit-color-scheme: light only;
+  background-color: #000 !important;
+}
+body {
+  color-scheme: light only;
+  -webkit-color-scheme: light only;
+  background-color: #000 !important;
+}
+img {
+  -webkit-filter: none !important;
+  filter: none !important;
+}
+</style>
+</head>
+<body>
+<div class="stage" id="stage">
+<img class="bg-img" id="bgImg" src="../images/common/pages/exchange/bg_zidian.png" draggable="false">
+<!-- 紫电兑换币显示（右上角） -->
+<div class="coin-display" style="left:1810px">
+  <img class="coin-icon" src="../images/common/coins/zidian_coin_icon.png" alt="紫电兑换币">
+  <span class="coin-num" id="zidianPointsNum">0</span>
+</div>
+<!-- 熔岩兑换币显示（右上角） -->
+<div class="coin-display" style="left:1980px">
+  <img class="coin-icon" src="../images/common/coins/points_coin_icon.png" alt="熔岩兑换币">
+  <span class="coin-num" id="pointsNum">0</span>
+</div>
+<div class="hotspot-layer" id="hotspotLayer">
+<div class="hotspot" data-action="back" style="left:10px;top:10px;width:100px;height:100px"></div>
+<div class="hotspot selected" data-cat="zidian" style="left:0;top:90px;width:140px;height:115px"></div>
+<div class="hotspot" data-cat="m4a1" style="left:0;top:210px;width:140px;height:115px"></div>
+<div class="hotspot" data-cat="ak47" style="left:0;top:330px;width:140px;height:115px"></div>
+<div class="hotspot" data-cat="barrett" style="left:0;top:450px;width:140px;height:115px"></div>
+<div class="hotspot" data-cat="m12s" style="left:0;top:570px;width:140px;height:115px"></div>
+<div class="hotspot" data-cat="ting" style="left:0;top:690px;width:140px;height:115px"></div>
+<div class="hotspot" data-cat="cop" style="left:0;top:810px;width:140px;height:115px"></div>
+<div class="hotspot" data-cat="feng" style="left:0;top:930px;width:140px;height:115px"></div>
+<div id="productHotspots"></div>
+<div class="hotspot" data-action="qtyMinus" style="left:1180px;top:960px;width:90px;height:90px;display:none"></div>
+<div class="hotspot" data-action="qtyPlus" style="left:1520px;top:960px;width:90px;height:90px;display:none"></div>
+<div class="hotspot" data-action="exchange" style="left:1730px;top:950px;width:360px;height:100px;border-radius:8px;display:none"></div>
+</div>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+var clickAudioPool = [];
+var clickAudioIndex = 0;
+for(var i = 0; i < 5; i++){
+  var ca = new Audio('../audio/gacha/click.m4a');
+  ca.preload = 'auto';
+  clickAudioPool.push(ca);
+}
+function playClickSound(){
+  try{
+    var audio = clickAudioPool[clickAudioIndex];
+    clickAudioIndex = (clickAudioIndex + 1) % 5;
+    audio.currentTime = 0;
+    audio.play().catch(function(e){});
+  }catch(e){}
+}
+
+const CATEGORIES = {
+  zidian: {
+    bg: '../images/common/pages/exchange/bg_zidian.png',
+    products: [
+      {name: 'M4A1-雷霆王者-紫电熔岩', price: 15},
+      {name: 'AK47-雷霆王者-紫电熔岩', price: 15},
+      {name: '巴雷特-雷霆王者-紫电熔岩', price: 15},
+      {name: 'M12S-雷霆王者-紫电熔岩', price: 15},
+      {name: '王者之霆-紫电熔岩', price: 15},
+      {name: 'COP357-雷霆王者-紫电熔岩', price: 10},
+      {name: '雷霆王者之锋-紫电熔岩', price: 12}
+    ]
+  },
+  m4a1: {
+    bg: '../images/common/pages/exchange/bg_m4a1.png',
+    products: [
+      {name: '紫电兑换币', price: 50},
+      {name: 'M4A1-雷霆王者-燃竞之巅', price: 300},
+      {name: 'M4A1-雷霆王者', price: 600}
+    ]
+  },
+  ak47: {
+    bg: '../images/common/pages/exchange/bg_ak47.png',
+    products: [
+      {name: '紫电兑换币', price: 50},
+      {name: 'AK47-雷霆王者-燃竞之巅', price: 300},
+      {name: 'AK47-雷霆王者', price: 600}
+    ]
+  },
+  barrett: {
+    bg: '../images/common/pages/exchange/bg_barrett.png',
+    products: [
+      {name: '紫电兑换币', price: 50},
+      {name: '巴雷特-雷霆王者-燃竞之巅', price: 300},
+      {name: '巴雷特-雷霆王者', price: 600}
+    ]
+  },
+  m12s: {
+    bg: '../images/common/pages/exchange/bg_m12s.png',
+    products: [
+      {name: '紫电兑换币', price: 50},
+      {name: 'M12S-雷霆王者-燃竞之巅', price: 300}
+    ]
+  },
+  ting: {
+    bg: '../images/common/pages/exchange/bg_ting.png',
+    products: [
+      {name: '紫电兑换币', price: 50},
+      {name: '王者之霆-燃竞之巅', price: 300}
+    ]
+  },
+  cop: {
+    bg: '../images/common/pages/exchange/bg_cop.png',
+    products: [
+      {name: '紫电兑换币', price: 50},
+      {name: 'COP357-雷霆王者-燃竞之巅', price: 270}
+    ]
+  },
+  feng: {
+    bg: '../images/common/pages/exchange/bg_feng.png',
+    products: [
+      {name: '紫电兑换币', price: 50},
+      {name: '雷霆王者之锋-燃竞之巅', price: 300},
+      {name: '雷霆王者之锋', price: 480}
+    ]
+  }
+};
+
+const PRODUCT_POSITIONS = [
+  {left: 561, top: 135},
+  {left: 922, top: 135},
+  {left: 1283, top: 135},
+  {left: 1644, top: 135},
+  {left: 561, top: 471},
+  {left: 922, top: 471},
+  {left: 1283, top: 471}
+];
+const PRODUCT_SIZE = {width: 335, height: 336};
+
+let currentCat = 'zidian';
+let selectedProductIdx = 0;
+let exchangeQty = 1;
+// 紫电兑换币计数（以兑换商城为准）
+let zidianPointsCount = 0;
+// 熔岩兑换币计数（从首页同步）
+let pointsCount = 0;
+
+// 更新紫电兑换币显示
+function updateZidianPointsDisplay(){
+  document.getElementById('zidianPointsNum').textContent = zidianPointsCount;
+}
+// 更新熔岩兑换币显示
+function updatePointsDisplay(){
+  document.getElementById('pointsNum').textContent = pointsCount;
+}
+
+// 增加紫电兑换币
+function addZidianPoints(count){
+  zidianPointsCount += count;
+  updateZidianPointsDisplay();
+  // 通知首页同步显示
+  window.parent.postMessage({type:'syncZidianPoints', points: zidianPointsCount}, '*');
+}
+
+// 减少紫电兑换币
+function deductZidianPoints(count){
+  if(zidianPointsCount >= count){
+    zidianPointsCount -= count;
+    updateZidianPointsDisplay();
+    // 通知首页同步显示
+    window.parent.postMessage({type:'syncZidianPoints', points: zidianPointsCount}, '*');
+    return true;
+  }
+  return false;
+}
+
+function setBg(cat) {
+  document.getElementById('bgImg').src = CATEGORIES[cat].bg;
+}
+
+function renderProductHotspots() {
+  const container = document.getElementById('productHotspots');
+  container.innerHTML = '';
+  const products = CATEGORIES[currentCat].products;
+  for (let i = 0; i < products.length; i++) {
+    const pos = PRODUCT_POSITIONS[i];
+    const div = document.createElement('div');
+    div.className = 'hotspot' + (i === selectedProductIdx ? ' selected' : '');
+    div.dataset.product = i;
+    div.style.left = pos.left + 'px';
+    div.style.top = pos.top + 'px';
+    div.style.width = PRODUCT_SIZE.width + 'px';
+    div.style.height = PRODUCT_SIZE.height + 'px';
+    container.appendChild(div);
+  }
+}
+
+function selectProduct(idx) {
+  selectedProductIdx = idx;
+  exchangeQty = 1;
+  renderProductHotspots();
+}
+
+function switchCat(cat) {
+  if (cat === currentCat) return;
+  currentCat = cat;
+  selectedProductIdx = 0;
+  exchangeQty = 1;
+  setBg(cat);
+  renderProductHotspots();
+  document.querySelectorAll('.hotspot[data-cat]').forEach(function(el){
+    if (el.dataset.cat === cat) {
+      el.classList.add('selected');
+    } else {
+      el.classList.remove('selected');
+    }
+  });
+}
+
+document.getElementById('hotspotLayer').addEventListener('click', function(e){
+  const target = e.target.closest('.hotspot');
+  if (!target) return;
+  
+  const action = target.dataset.action;
+  const cat = target.dataset.cat;
+  const product = target.dataset.product;
+  
+  if (action === 'back') {
+    playClickSound();
+    window.parent.postMessage({type:'closeExchange'}, '*');
+    return;
+  }
+  
+  if (cat) {
+    playClickSound();
+    switchCat(cat);
+    spawnEffect(e);
+    return;
+  }
+  
+  if (product !== undefined) {
+    playClickSound();
+    const products = CATEGORIES[currentCat].products;
+    const p = products[parseInt(product)];
+    if (p) {
+      // 点击道具直接跳二次确认兑换，数量默认1，带上当前分类信息
+      window.parent.postMessage({type:'openExchangeConfirm', product: p.name, price: p.price, qty: 1, cat: currentCat}, '*');
+    }
+    spawnEffect(e);
+    return;
+  }
+  
+  if (action === 'qtyMinus') {
+    if (exchangeQty > 1) {
+      playClickSound();
+      exchangeQty--;
+      spawnEffect(e);
+    }
+    return;
+  }
+  
+  if (action === 'qtyPlus') {
+    playClickSound();
+    exchangeQty++;
+    spawnEffect(e);
+    return;
+  }
+  
+  if (action === 'exchange') {
+    playClickSound();
+    doExchange();
+    spawnEffect(e);
+    return;
+  }
+});
+
+function doExchange() {
+  const products = CATEGORIES[currentCat].products;
+  const p = products[selectedProductIdx];
+  if (!p) {
+    showToast('请选择道具');
+    return;
+  }
+  window.parent.postMessage({type:'openExchangeConfirm', product: p.name, price: p.price, qty: exchangeQty}, '*');
+}
+
+function showToast(msg) {
+  const toast = document.getElementById('toast');
+  toast.textContent = msg;
+  toast.classList.add('show');
+  setTimeout(function(){ toast.classList.remove('show'); }, 2000);
+}
+
+function spawnEffect(e) {
+  const stage = document.getElementById('stage');
+  const rect = stage.getBoundingClientRect();
+  const scaleX = 2340 / rect.width;
+  const scaleY = 1080 / rect.height;
+  const x = (e.clientX - rect.left) * scaleX;
+  const y = (e.clientY - rect.top) * scaleY;
+  
+  const flash = document.createElement('div');
+  flash.className = 'flash';
+  flash.style.left = x + 'px';
+  flash.style.top = y + 'px';
+  stage.appendChild(flash);
+  setTimeout(function(){ flash.remove(); }, 500);
+}
+
+function layout() {
+  var s = Math.min(window.innerWidth/2340, window.innerHeight/1080);
+  var stage = document.getElementById('stage');
+  stage.style.transform = 'scale('+s+')';
+  stage.style.left = (window.innerWidth - 2340*s)/2 + 'px';
+  stage.style.top = (window.innerHeight - 1080*s)/2 + 'px';
+}
+window.addEventListener('resize', layout);
+layout();
+
+// 监听父页面传来的消息
+window.addEventListener('message', function(e){
+  // 父页面设置紫电兑换币数量（初始化同步）
+  if(e.data && e.data.type === 'updateZidianPoints'){
+    zidianPointsCount = e.data.points || 0;
+    updateZidianPointsDisplay();
+  }
+  // 父页面设置熔岩兑换币数量（初始化同步）
+  if(e.data && e.data.type === 'updatePoints'){
+    pointsCount = e.data.points || 0;
+    updatePointsDisplay();
+  }
+  // 父页面请求获取紫电兑换币数量
+  if(e.data && e.data.type === 'getZidianPoints'){
+    window.parent.postMessage({type:'syncZidianPoints', points: zidianPointsCount}, '*');
+  }
+  // 父页面请求增加紫电兑换币
+  if(e.data && e.data.type === 'addZidianPoints'){
+    var addCount = e.data.count || 0;
+    zidianPointsCount += addCount;
+    updateZidianPointsDisplay();
+    // 通知首页同步显示
+    window.parent.postMessage({type:'syncZidianPoints', points: zidianPointsCount}, '*');
+  }
+  // 父页面请求减少紫电兑换币
+  if(e.data && e.data.type === 'deductZidianPoints'){
+    var deductCount = e.data.count || 0;
+    if(zidianPointsCount >= deductCount){
+      zidianPointsCount -= deductCount;
+      updateZidianPointsDisplay();
+      window.parent.postMessage({type:'deductZidianPointsSuccess', points: zidianPointsCount}, '*');
+    }else{
+      window.parent.postMessage({type:'deductZidianPointsFail', points: zidianPointsCount}, '*');
+    }
+  }
+});
+
+// 页面加载时向父页面请求紫电币和熔岩币数量
+window.addEventListener('load', function(){
+  setTimeout(function(){
+    window.parent.postMessage({type:'requestZidianPoints'}, '*');
+    window.parent.postMessage({type:'requestPoints'}, '*');
+  }, 100);
+});
+
+renderProductHotspots();
+</script>
+<script>
+document.addEventListener('contextmenu', function(e){
+  e.preventDefault();
+});
+document.addEventListener('dragstart', function(e){
+  e.preventDefault();
+});
+</script>
+</body>
+</html>

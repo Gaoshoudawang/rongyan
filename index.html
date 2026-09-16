@@ -1,0 +1,3390 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta name="color-scheme" content="light only">
+  <meta name="supported-color-schemes" content="light">
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>熔岩夺宝抽奖模拟器</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;-webkit-user-select:none;-moz-user-select:none;-ms-user-select:none;user-select:none;-webkit-touch-callout:none}
+html,html,body{width:100%;height:100%;background:#000;overflow:hidden;font-family:"Microsoft YaHei",sans-serif}
+.stage{position:absolute;top:50%;left:50%;width:2340px;height:1080px;margin:-540px 0 0 -1170px;transform-origin:center center;cursor:pointer}
+.layer{position:absolute;inset:0;width:2340px;height:1080px;pointer-events:none;user-select:none;-webkit-user-drag:none;display:block}
+.layer-bg{z-index:1}
+.layer-weapon{z-index:2;animation:weaponFloat 4s ease-in-out infinite;will-change:transform;filter:drop-shadow(0 0 25px rgba(100,140,255,.3))}
+@keyframes weaponFloat{0%,100%{transform:translateY(0)}50%{transform:translateY(-26px)}}
+/* 奖池选择模式下武器浮动幅度减小 */
+.layer-weapon.weapon-small{
+  animation: weaponFloatSmall 4s ease-in-out infinite;
+}
+@keyframes weaponFloatSmall{
+  0%,100%{transform: translateY(0);}
+  50%{transform: translateY(-10px);}
+}
+.btn-layer{position:absolute;inset:0;z-index:10;pointer-events:none}
+/* 奖池选择模式 - 金色光晕 */
+.gold-glow{position:absolute;border-radius:50%;background:radial-gradient(circle,rgba(255,215,0,0.55) 0%,rgba(255,215,0,0.25) 40%,rgba(255,215,0,0) 70%);pointer-events:none;animation:glowPulse 1.5s ease-in-out infinite;z-index:5}
+@keyframes glowPulse{0%,100%{opacity:0.8;transform:scale(1)}50%{opacity:1;transform:scale(1.12)}}
+/* 奖池选择模式 - 热区层 */
+.pool-select-hit-layer{position:absolute;top:0;left:0;width:100%;height:100%;cursor:pointer;z-index:20;pointer-events:auto}
+.hotspot{position:absolute;pointer-events:auto;cursor:pointer;border-radius:10px;transition:transform .12s ease,background .12s ease}
+.hotspot:active{transform:scale(.93);background:rgba(255,215,0,.12)}
+.hotspot.pulse{animation:btnPulse 2s ease-in-out infinite}
+@keyframes btnPulse{0%,100%{box-shadow:0 0 0 0 rgba(255,200,50,.5)}50%{box-shadow:0 0 0 18px rgba(255,200,50,0)}}
+.ripple{position:absolute;border-radius:50%;border:3px solid rgba(255,200,50,.9);background:radial-gradient(circle,rgba(255,220,100,.25) 0%,rgba(255,180,0,.08) 60%,transparent 100%);transform:translate(-50%,-50%) scale(0);animation:rippleExpand .7s cubic-bezier(.1,.8,.3,1) forwards;pointer-events:none;z-index:100;box-shadow:0 0 24px rgba(255,200,50,.5),0 0 48px rgba(255,180,0,.25)}
+@keyframes rippleExpand{0%{transform:translate(-50%,-50%) scale(0);opacity:1}100%{transform:translate(-50%,-50%) scale(7);opacity:0}}
+.particle{position:absolute;width:7px;height:7px;border-radius:50%;pointer-events:none;z-index:100}
+.flash{position:absolute;width:120px;height:120px;border-radius:50%;background:radial-gradient(circle,rgba(255,255,210,.9) 0%,rgba(255,220,100,.35) 40%,transparent 70%);transform:translate(-50%,-50%) scale(0);animation:flashBurst .55s ease-out forwards;pointer-events:none;z-index:99}
+@keyframes flashBurst{0%{transform:translate(-50%,-50%) scale(0);opacity:1}50%{transform:translate(-50%,-50%) scale(1.6);opacity:.7}100%{transform:translate(-50%,-50%) scale(3);opacity:0}}
+.shockwave{position:absolute;border-radius:50%;border:2px solid rgba(255,230,120,.6);transform:translate(-50%,-50%) scale(0);animation:shockwaveExpand .8s ease-out forwards;pointer-events:none;z-index:98}
+@keyframes shockwaveExpand{0%{transform:translate(-50%,-50%) scale(0);opacity:.8}100%{transform:translate(-50%,-50%) scale(10);opacity:0}}
+
+.hotspot,
+.hotspot:active,
+.hotspot:hover,
+.hotspot:focus,
+.hotspot.pulse,
+.hotspot.selected{
+  border:none!important;
+  background:transparent!important;
+  outline:none!important;
+  box-shadow:none!important;
+  animation:none!important;
+}
+.hotspot-label{display:none!important}
+
+.exchange-modal{position:fixed;inset:0;background:rgba(0,0,0,.88);z-index:500;display:none;align-items:center;justify-content:center}
+.exchange-modal.active{display:flex}
+.exchange-box{position:relative;width:92%;height:88%;background:#000;border-radius:10px;overflow:hidden;box-shadow:0 0 50px rgba(0,0,0,.8)}
+.exchange-box iframe{width:100%;height:100%;border:none;display:block;background:#000}
+
+.fs-btn{position:fixed;top:12px;right:12px;width:52px;height:52px;border-radius:50%;background:rgba(0,0,0,.65);border:2px solid rgba(var(--primary-color-rgb),.5);color:var(--primary-color);font-size:26px;cursor:pointer;z-index:10000000;display:flex;align-items:center;justify-content:center;transition:all .2s}
+
+/* 背景音乐音量调节（垂直） */
+.bgm-volume-control{position:fixed;top:72px;right:12px;width:32px;height:120px;background:rgba(0,0,0,.65);border:1px solid rgba(var(--primary-color-rgb),.4);border-radius:16px;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;padding:8px 0;z-index:10000000;transition:all .2s}
+.bgm-volume-control:hover{background:rgba(0,0,0,.8);border-color:rgba(var(--primary-color-rgb),.7)}
+.bgm-volume-icon{font-size:14px;margin-bottom:6px;flex-shrink:0}
+.bgm-volume-slider{-webkit-appearance:none;appearance:none;width:80px;height:4px;background:rgba(255,255,255,.2);border-radius:2px;outline:none;cursor:pointer;transform:rotate(-90deg);transform-origin:center center;margin-top:30px}
+.bgm-volume-slider::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;width:14px;height:14px;border-radius:50%;background:var(--primary-color);cursor:pointer;border:2px solid #fff;box-shadow:0 0 4px rgba(var(--primary-color-rgb),.6)}
+.bgm-volume-slider::-moz-range-thumb{width:14px;height:14px;border-radius:50%;background:#ffd700;cursor:pointer;border:2px solid #fff;box-shadow:0 0 4px rgba(255,215,0,.6)}
+/* 全屏时隐藏全屏按钮和音量调节 */
+:fullscreen .fs-btn, :fullscreen .bgm-volume-control,
+:-webkit-full-screen .fs-btn, :-webkit-full-screen .bgm-volume-control{display:none !important}
+/* 页面说明文字 */
+.page-info{position:fixed;top:0;left:0;right:0;background:rgba(0,0,0,0.85);color:#ccc;font-size:12px;line-height:1.5;padding:6px 20px;z-index:10000000;text-align:left}
+.disclaimer-box{position:fixed;bottom:0;left:0;right:0;background:rgba(0,0,0,0.85);color:#999;font-size:12px;line-height:1.6;padding:10px 20px;z-index:10000000;text-align:left;border-top:1px solid rgba(255,255,255,0.1)}
+.page-info .title{color:var(--primary-color);font-size:13px;font-weight:bold;margin-bottom:2px}
+.page-info .guide{margin-bottom:2px}
+.page-info .guide p{margin:0}
+.page-info .disclaimer{color:#999;font-size:12px;border-top:1px solid rgba(255,255,255,0.1);padding-top:8px}
+.fs-btn:hover{background:rgba(255,215,0,.2);transform:scale(1.1)}
+.fs-btn:active{transform:scale(.92)}
+body.is-fullscreen .fs-btn{display:none!important}
+body.is-fullscreen .page-info{display:none!important}
+body.is-fullscreen .disclaimer-box{display:none!important}
+
+.gacha-single-modal{position:fixed;inset:0;background:#000;z-index:100003;display:none;align-items:center;justify-content:center}
+.gacha-single-modal.gacha-show{display:flex!important}
+.gacha-single-box{position:relative;width:100vw;height:calc(100vw * 1080 / 2340);max-height:100vh;max-width:calc(100vh * 2340 / 1080);background:#000;overflow:hidden}
+.gacha-single-box iframe{width:100%;height:100%;border:none;display:block;background:#000}
+.gacha-ten-modal{position:fixed;inset:0;background:#000;z-index:100004;display:none;align-items:center;justify-content:center}
+.gacha-ten-modal.gacha-show{display:flex!important}
+.gacha-ten-box{position:relative;width:100vw;height:calc(100vw * 1080 / 2340);max-height:100vh;max-width:calc(100vh * 2340 / 1080);background:#000;overflow:hidden}
+.gacha-ten-box iframe{width:100%;height:100%;border:none;display:block;background:#000}
+.gacha-tpl{display:none!important}
+
+.shop-modal{position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:100005;display:none;align-items:center;justify-content:center}
+.shop-modal.shop-show{display:flex!important}
+.shop-box{position:relative;width:100vw;height:calc(100vw * 1080 / 2340);max-height:100vh;max-width:calc(100vh * 2340 / 1080);background:#000;overflow:hidden}
+.shop-box iframe{width:100%;height:100%;border:none;display:block;background:transparent}
+.shop-tpl{display:none!important}
+.recharge-modal{position:fixed;inset:0;background:rgba(0,0,0,0.85);z-index:100006;display:none;align-items:center;justify-content:center}
+.recharge-modal.recharge-show{display:flex!important}
+.recharge-box{position:relative;width:100vw;height:calc(100vw * 1080 / 2340);max-height:100vh;max-width:calc(100vh * 2340 / 1080);background:#000;overflow:hidden}
+.recharge-box iframe{width:100%;height:100%;border:none;display:block;background:#000}
+.confirm-modal{position:fixed;inset:0;background:rgba(0,0,0,0.85);z-index:100007;display:none;align-items:center;justify-content:center}
+.confirm-modal.confirm-show{display:flex!important}
+.confirm-box{position:relative;width:100vw;height:calc(100vw * 1344 / 2912);max-height:100vh;max-width:calc(100vh * 2912 / 1344);background:#000;overflow:hidden}
+.confirm-box iframe{width:100%;height:100%;border:none;display:block;background:#000}
+.payment-modal{position:fixed;inset:0;background:rgba(0,0,0,0.85);z-index:100008;display:none;align-items:center;justify-content:center}
+.payment-modal.payment-show{display:flex!important}
+.payment-box{position:relative;width:100vw;height:calc(100vw * 1344 / 2912);max-height:100vh;max-width:calc(100vh * 2912 / 1344);background:#000;overflow:hidden}
+.payment-box iframe{width:100%;height:100%;border:none;display:block;background:#000}
+.exchange-confirm-modal{position:fixed;inset:0;background:rgba(0,0,0,0.85);z-index:100009;display:none;align-items:center;justify-content:center}
+.exchange-confirm-modal.exchange-confirm-show{display:flex!important}
+.exchange-confirm-box{position:relative;width:100vw;height:calc(100vw * 1344 / 2912);max-height:100vh;max-width:calc(100vh * 2912 / 1344);background:#000;overflow:hidden}
+.exchange-confirm-box iframe{width:100%;height:100%;border:none;display:block;background:#000}
+.reward-modal{position:fixed;inset:0;z-index:500;display:none;background:rgba(0,0,0,0.85)}
+.reward-modal.show{display:block}
+#rewardIframe{position:absolute;inset:0;width:100%;height:100%;border:none}
+.storage-modal{position:fixed;inset:0;z-index:500;display:none;background:rgba(0,0,0,0.85)}
+.storage-modal.show{display:block}
+#storageIframe{position:absolute;inset:0;width:100%;height:100%;border:none}
+.decompose-reward-modal{position:fixed;inset:0;z-index:600;display:none;background:rgba(0,0,0,0.85)}
+.warehouse-multi-modal{position:fixed;inset:0;z-index:600;display:none;background:rgba(0,0,0,0.85)}
+.warehouse-multi-modal.show{display:block}
+#warehouseMultiIframe{position:absolute;inset:0;width:100%;height:100%;border:none}
+.warehouse-modal{position:fixed;inset:0;z-index:500;display:none;background:rgba(0,0,0,0.85)}
+.storage-modal iframe{width:100%;height:100%;border:none;display:block;background:#000}
+.warehouse-modal iframe{width:100%;height:100%;border:none;display:block;background:#000}
+.warehouse-modal.show{display:block}
+.decompose-reward-modal.show{display:block}
+#decomposeRewardIframe{position:absolute;inset:0;width:100%;height:100%;border:none}
+
+/* 购买抽奖币成功弹窗 */
+.buy-success-modal{position:fixed;inset:0;z-index:999999;background:#000;display:none;align-items:center;justify-content:center}
+.buy-success-modal.show{display:flex!important}
+.buy-success-box{position:relative;width:100vw;height:calc(100vw * 1080 / 2340);max-height:100vh;max-width:calc(100vh * 2340 / 1080);background:#000;overflow:hidden}
+.buy-success-box iframe{width:100%;height:100%;border:none;display:block;background:#000}
+/* 紫电熔岩获得编号页面 */
+.zidian-serial-modal{position:fixed;inset:0;z-index:999999;background:#000;display:none;align-items:center;justify-content:center}
+.zidian-serial-modal.show{display:flex!important}
+.zidian-serial-box{position:relative;width:100vw;height:calc(100vw * 1080 / 2340);max-height:100vh;max-width:calc(100vh * 2340 / 1080);background:#000;overflow:hidden}
+.zidian-serial-box iframe{width:100%;height:100%;border:none;display:block;background:#000}
+/* 额外加赠提示弹窗 */
+.bonus-tip-modal{position:fixed;inset:0;z-index:999998;background:#000;display:none;align-items:center;justify-content:center}
+.bonus-tip-modal.show{display:flex!important}
+.bonus-tip-box{position:relative;width:100vw;height:calc(100vw * 1080 / 2340);max-height:100vh;max-width:calc(100vh * 2340 / 1080);background:#000;overflow:hidden}
+.bonus-tip-box iframe{width:100%;height:100%;border:none;display:block;background:#000}
+/* 额外加赠奖励弹窗 */
+.bonus-reward-modal{position:fixed;inset:0;z-index:999997;background:#000;display:none;align-items:center;justify-content:center}
+.bonus-reward-modal.show{display:flex!important}
+.bonus-reward-box{position:relative;width:100vw;height:calc(100vw * 1080 / 2340);max-height:100vh;max-width:calc(100vh * 2340 / 1080);background:#000;overflow:hidden}
+.bonus-reward-box iframe{width:100%;height:100%;border:none;display:block;background:#000}
+/* 神话加赠提示弹窗 */
+.mythic-tip-modal{position:fixed;inset:0;z-index:999996;background:#000;display:none;align-items:center;justify-content:center}
+.mythic-tip-modal.show{display:flex!important}
+.mythic-tip-box{position:relative;width:100vw;height:calc(100vw * 1080 / 2340);max-height:100vh;max-width:calc(100vh * 2340 / 1080);background:#000;overflow:hidden}
+.mythic-tip-box iframe{width:100%;height:100%;border:none;display:block;background:#000}
+/* 神话加赠奖励弹窗 */
+.mythic-reward-modal{position:fixed;inset:0;z-index:999995;background:#000;display:none;align-items:center;justify-content:center}
+.mythic-reward-modal.show{display:flex!important}
+.mythic-reward-box{position:relative;width:100vw;height:calc(100vw * 1080 / 2340);max-height:100vh;max-width:calc(100vh * 2340 / 1080);background:#000;overflow:hidden}
+.mythic-reward-box iframe{width:100%;height:100%;border:none;display:block;background:#000}
+/* ===== 灰蓝金属确认弹窗（兑换失败用） ===== */
+.sb-confirm-panel{
+  width:45%;max-width:500px;
+  background:linear-gradient(160deg,#8a92a8 0%,#6a7288 30%,#5a6278 60%,#4a5268 100%);
+  border-radius:4px;
+  position:relative;overflow:hidden;
+  padding:4vh 3vw 3vh;
+  box-shadow:0 0 60px rgba(0,0,0,0.6);
+}
+.sb-confirm-panel::before{
+  content:'';position:absolute;top:0;left:0;right:0;height:4px;
+  background:linear-gradient(90deg,#c03030,#e04040,#c03030);
+}
+.sb-confirm-cflogo{
+  position:absolute;top:1.5vh;left:2vw;
+  font-size:3vh;font-weight:bold;color:#d04040;
+  opacity:0.6;letter-spacing:1px;
+}
+.sb-confirm-content{
+  text-align:center;padding:3vh 0;
+}
+.sb-confirm-content p{
+  font-size:3vh;color:#fff;line-height:1.8;
+  text-shadow:0 1px 2px rgba(0,0,0,0.5);
+}
+.sb-confirm-btns{
+  display:flex;gap:2vw;justify-content:center;
+  padding-top:2vh;
+}
+.sb-btn-gold{
+  padding:1.5vh 4vw;
+  background:linear-gradient(180deg,#ffe080,#d4a030 50%,#a07018);
+  border:1px solid #805010;border-radius:3px;
+  color:#3a2800;font-size:2.8vh;font-weight:bold;
+  cursor:pointer;
+  box-shadow:0 0.4vh 1.5vh rgba(200,150,30,0.4);
+}
+.sb-btn-gold:active{transform:scale(0.97);}
+/* 选择奖池弹窗 */
+.pool-select-modal{position:fixed;inset:0;background:rgba(0,0,0,0.9);z-index:100010;display:none;align-items:center;justify-content:center}
+.pool-select-modal.show{display:flex}
+.pool-select-modal iframe{width:100%;height:100%;border:none}
+/* 转接页面 */
+.transition-modal{position:fixed;inset:0;background:#000;z-index:100020;display:none;overflow:hidden}
+.transition-modal.show{display:block}
+.transition-stage{position:absolute;width:2340px;height:1080px;transform-origin:top left}
+.transition-stage img{position:absolute;top:0;left:0;width:100%;height:100%;object-fit:cover;display:block}
+/* 数量选择弹窗（复用兑换失败弹窗样式） */
+.numselect-mask{
+  position:fixed;inset:0;z-index:100015;
+  background:rgba(0,0,0,0.75);
+  display:none;align-items:center;justify-content:center;
+}
+.numselect-mask.show{display:flex;}
+/* 数量选择行 */
+.numselect-row{
+  display:flex;align-items:center;justify-content:center;
+  gap:3vw;padding:2vh 0;
+}
+/* 加减按钮（圆形） */
+.numselect-btn{
+  width:8vh;height:8vh;border-radius:50%;
+  background:linear-gradient(180deg,#b0b8c8,#606878);
+  border:2px solid #505868;color:#2a2a3a;
+  font-size:5vh;font-weight:bold;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;
+}
+.numselect-btn:active{transform:scale(0.9);}
+/* 中间数字 */
+.numselect-value{
+  font-size:5vh;color:#ffd060;font-weight:bold;
+  min-width:10vw;text-align:center;
+  text-shadow:0 1px 2px rgba(0,0,0,0.5);
+}
+/* 取消按钮 */
+.numselect-cancel-btn{
+  padding:1.5vh 4vw;
+  background:linear-gradient(180deg,#b0b8c8,#606878);
+  border:1px solid #505868;border-radius:3px;
+  color:#2a2a3a;font-size:2.8vh;font-weight:bold;
+  cursor:pointer;
+}
+.numselect-cancel-btn:active{transform:scale(0.97);}
+</style>
+  <script src="data/gacha_base.js"></script>
+  <script src="data/config.js"></script>
+<script>
+// 根据config.js动态设置主题颜色CSS变量
+if(typeof SIMULATOR_CONFIG !== 'undefined' && SIMULATOR_CONFIG.theme){
+  var root = document.documentElement;
+  root.style.setProperty('--primary-color', SIMULATOR_CONFIG.theme.primaryColor);
+  root.style.setProperty('--primary-color-rgb', SIMULATOR_CONFIG.theme.primaryColorRgb);
+  root.style.setProperty('--primary-color-light', SIMULATOR_CONFIG.theme.primaryColorLight);
+  root.style.setProperty('--accent-color', SIMULATOR_CONFIG.theme.accentColor);
+}
+</script>
+  <script src="data/item_box_config.js"></script>
+  <script src="data/buy_tiers.js"></script>
+  <script src="data/exchange_data.js"></script>
+  <script src="data/decompose_points.js"></script>
+<style>
+
+/* ===== 防止浏览器暗夜模式自动反转颜色 ===== */
+:root {
+  color-scheme: light only;
+  -webkit-color-scheme: light only;
+  /* 熔岩夺宝橙红色主题 */
+  --primary-color: #ff6b35;
+  --primary-color-rgb: 255,107,53;
+  --primary-color-light: #ff8c5a;
+  --accent-color: #ff3b30;
+}
+html {
+  color-scheme: light only;
+  -webkit-color-scheme: light only;
+  background-color: #000 !important;
+}
+body {
+  color-scheme: light only;
+  -webkit-color-scheme: light only;
+  background-color: #000 !important;
+  -webkit-lightness-adjust: none !important;
+}
+/* 防止图片被反转 */
+img {
+  -webkit-filter: none !important;
+  filter: none !important;
+}
+/* ============================================ */
+
+/* ===== 加载页面样式（熔岩夺宝橙红色主题） ===== */
+#loadingOverlay{
+  position:fixed;
+  top:0;left:0;right:0;bottom:0;
+  background:#000;
+  z-index:9999;
+  transition:opacity 0.5s ease;
+}
+#loadingOverlay.hidden{
+  opacity:0;
+  pointer-events:none;
+}
+/* 加载界面容器（和模拟器stage一样，2340x1080，自适应缩放居中） */
+#loadingStage{
+  position:absolute;
+  top:0;
+  left:0;
+  width:2340px;
+  height:1080px;
+  transform-origin:top left;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  background:#0a0a1a;
+  overflow:hidden;
+}
+/* 首页背景图模糊层 */
+.loading-bg{
+  position:absolute;
+  top:0;left:0;right:0;bottom:0;
+  background:url('images/common/pages/home/pool_select_bg.png') center/cover no-repeat;
+  filter:blur(12px) brightness(0.5);
+  transform:scale(1.1);
+  z-index:0;
+  pointer-events:none;
+}
+/* 背景网格线效果（橙红色） */
+#loadingStage::before{
+  content:'';
+  position:absolute;
+  top:0;left:0;right:0;bottom:0;
+  background:
+    linear-gradient(rgba(var(--primary-color-rgb),0.06) 1px,transparent 1px),
+    linear-gradient(90deg,rgba(var(--primary-color-rgb),0.06) 1px,transparent 1px);
+  background-size:60px 60px;
+  pointer-events:none;
+  z-index:1;
+}
+/* 旋转光晕效果（橙红色） */
+#loadingStage::after{
+  content:'';
+  position:absolute;
+  top:-50%;
+  left:-50%;
+  width:200%;
+  height:200%;
+  background:radial-gradient(circle,rgba(var(--primary-color-rgb),0.1) 0%,transparent 50%);
+  animation:rotateGlow 15s linear infinite;
+  pointer-events:none;
+  z-index:1;
+}
+@keyframes rotateGlow{
+  from{transform:rotate(0deg)}
+  to{transform:rotate(360deg)}
+}
+/* Logo文字样式（艺术字效果，橙红色主题） */
+.loading-logo{
+  font-size:168px;
+  font-weight:900;
+  letter-spacing:24px;
+  margin-bottom:120px;
+  position:relative;
+  z-index:1;
+  /* 橙红色渐变文字填充（白→橙→红） */
+  background:linear-gradient(180deg,#ffffff 0%,var(--primary-color-light) 30%,var(--primary-color) 60%,var(--accent-color) 100%);
+  -webkit-background-clip:text;
+  background-clip:text;
+  -webkit-text-fill-color:transparent;
+  /* 橙红色发光效果 */
+  text-shadow:
+    0 0 20px rgba(var(--primary-color-rgb),0.8),
+    0 0 40px rgba(var(--primary-color-rgb),0.5),
+    0 4px 8px rgba(0,0,0,0.8);
+  /* 轻微呼吸动画 */
+  animation:logoGlow 3s ease-in-out infinite;
+}
+@keyframes logoGlow{
+  0%,100%{
+    text-shadow:
+      0 0 20px rgba(var(--primary-color-rgb),0.8),
+      0 0 40px rgba(var(--primary-color-rgb),0.5),
+      0 4px 8px rgba(0,0,0,0.8);
+  }
+  50%{
+    text-shadow:
+      0 0 30px rgba(var(--primary-color-rgb),1),
+      0 0 60px rgba(var(--primary-color-rgb),0.7),
+      0 4px 8px rgba(0,0,0,0.8);
+  }
+}
+/* 加载阶段文字 */
+.loading-stage{
+  font-size:84px;
+  color:var(--primary-color);
+  margin-bottom:90px;
+  min-height:120px;
+  position:relative;
+  z-index:1;
+  text-shadow:0 0 15px rgba(var(--primary-color-rgb),0.5);
+}
+/* 进度条容器 */
+.loading-bar-row{
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  gap:30px;
+  margin-bottom:40px;
+}
+.loading-bar-container{
+  width:1600px;
+  height:48px;
+  background:rgba(255,255,255,0.1);
+  border-radius:24px;
+  overflow:hidden;
+  position:relative;
+  z-index:1;
+  border:4px solid rgba(var(--primary-color-rgb),0.4);
+  box-shadow:0 0 20px rgba(var(--primary-color-rgb),0.2);
+}
+/* 进度条填充（橙红色渐变） */
+.loading-bar-fill{
+  height:100%;
+  width:0%;
+  background:linear-gradient(90deg,var(--accent-color) 0%,var(--primary-color) 50%,var(--primary-color-light) 100%);
+  border-radius:20px;
+  transition:width 0.3s ease;
+  position:relative;
+  box-shadow:0 0 15px rgba(var(--primary-color-rgb),0.6);
+  overflow:hidden;
+}
+/* 进度条内部箭头效果 */
+.loading-bar-fill::after{
+  content:'';
+  position:absolute;
+  top:0;left:0;right:0;bottom:0;
+  background:repeating-linear-gradient(
+    90deg,
+    transparent 0px,
+    transparent 20px,
+    rgba(255,255,255,0.15) 20px,
+    rgba(255,255,255,0.15) 40px
+  );
+  animation:arrowMove 1s linear infinite;
+}
+@keyframes arrowMove{
+  from{background-position:0 0}
+  to{background-position:40px 0}
+}
+/* 进度百分比 */
+.loading-percent{
+  font-size:72px;
+  color:var(--primary-color-light);
+  font-weight:bold;
+  position:relative;
+  flex-shrink:0;
+  min-width:180px;
+  text-align:left;
+  z-index:1;
+  text-shadow:0 0 10px rgba(var(--primary-color-rgb),0.5);
+}
+/* 提示文字 */
+.loading-tip{
+  font-size:56px;
+  color:#ccaa66;
+  margin-top:60px;
+  position:relative;
+  z-index:1;
+}
+
+/* ===== 加载页面美化增强 ===== */
+/* 装饰性四角线条 */
+.loading-corner{
+  position:absolute;
+  width:160px;
+  height:160px;
+  border:6px solid rgba(var(--primary-color-rgb),0.6);
+  z-index:2;
+  pointer-events:none;
+}
+.loading-corner-tl{top:80px;left:80px;border-right:none;border-bottom:none;}
+.loading-corner-tr{top:80px;right:80px;border-left:none;border-bottom:none;}
+.loading-corner-bl{bottom:80px;left:80px;border-right:none;border-top:none;}
+.loading-corner-br{bottom:80px;right:80px;border-left:none;border-top:none;}
+
+/* 环形加载动画容器 */
+.loading-spinner-container{
+  position:relative;
+  width:200px;
+  height:200px;
+  margin-bottom:80px;
+  z-index:2;
+}
+/* 环形背景 */
+.loading-spinner-bg{
+  position:absolute;
+  top:0;left:0;
+  width:100%;
+  height:100%;
+  border:12px solid rgba(var(--primary-color-rgb),0.2);
+  border-radius:50%;
+}
+/* 环形进度（旋转动画） */
+.loading-spinner{
+  position:absolute;
+  top:0;left:0;
+  width:100%;
+  height:100%;
+  border:12px solid transparent;
+  border-top-color:var(--primary-color);
+  border-right-color:var(--primary-color-light);
+  border-radius:50%;
+  animation:spin 1.2s linear infinite;
+  box-shadow:0 0 20px rgba(var(--primary-color-rgb),0.4);
+}
+@keyframes spin{
+  from{transform:rotate(0deg)}
+  to{transform:rotate(360deg)}
+}
+/* 环形中心光点 */
+.loading-spinner-center{
+  position:absolute;
+  top:50%;left:50%;
+  transform:translate(-50%,-50%);
+  width:40px;
+  height:40px;
+  background:radial-gradient(circle,var(--primary-color-light) 0%,var(--primary-color) 100%);
+  border-radius:50%;
+  box-shadow:0 0 15px rgba(var(--primary-color-rgb),0.8);
+  animation:pulse 1.5s ease-in-out infinite;
+}
+@keyframes pulse{
+  0%,100%{transform:translate(-50%,-50%) scale(1);opacity:1;}
+  50%{transform:translate(-50%,-50%) scale(1.3);opacity:0.7;}
+}
+
+/* 进度条末端光点 */
+.loading-bar-fill::before{
+  content:'';
+  position:absolute;
+  top:50%;
+  right:-16px;
+  transform:translateY(-50%);
+  width:40px;
+  height:40px;
+  background:radial-gradient(circle,#fff 0%,var(--primary-color-light) 40%,transparent 70%);
+  border-radius:50%;
+  box-shadow:0 0 20px var(--primary-color-light),0 0 40px var(--primary-color);
+  animation:glowDot 1s ease-in-out infinite;
+}
+@keyframes glowDot{
+  0%,100%{opacity:1;transform:translateY(-50%) scale(1);}
+  50%{opacity:0.7;transform:translateY(-50%) scale(1.2);}
+}
+
+/* 进度条流光效果 */
+.loading-bar-shine{
+  position:absolute;
+  top:0;left:-100%;
+  width:100%;
+  height:100%;
+  background:linear-gradient(90deg,transparent 0%,rgba(255,255,255,0.4) 50%,transparent 100%);
+  animation:shine 2s ease-in-out infinite;
+}
+@keyframes shine{
+  0%{left:-100%;}
+  100%{left:100%;}
+}
+
+/* 加载阶段文字渐入动画 */
+.loading-stage{
+  animation:fadeInUp 0.5s ease-out;
+}
+@keyframes fadeInUp{
+  from{opacity:0;transform:translateY(10px);}
+  to{opacity:1;transform:translateY(0);}
+}
+
+/* 加载页面装饰横线 */
+.loading-divider{
+  width:600px;
+  height:4px;
+  background:linear-gradient(90deg,transparent 0%,rgba(var(--primary-color-rgb),0.6) 50%,transparent 100%);
+  margin:40px 0;
+  z-index:2;
+  position:relative;
+}
+
+</style>
+</head>
+<body>
+<!-- 加载页面 -->
+<div id="loadingOverlay">
+  <div id="loadingStage">
+    <div class="loading-bg"></div>
+    <!-- 装饰性四角线条 -->
+    <div class="loading-corner loading-corner-tl"></div>
+    <div class="loading-corner loading-corner-tr"></div>
+    <div class="loading-corner loading-corner-bl"></div>
+    <div class="loading-corner loading-corner-br"></div>
+    <div class="loading-divider"></div>
+    <!-- 环形加载动画（在Logo上方） -->
+    <div class="loading-spinner-container">
+      <div class="loading-spinner-bg"></div>
+      <div class="loading-spinner"></div>
+      <div class="loading-spinner-center"></div>
+    </div>
+    <div class="loading-logo">熔岩夺宝</div>
+    <div class="loading-stage" id="loadingStageText">正在初始化模拟器···</div>
+    <!-- 进度条 + 百分比（同一行，百分比在进度条后面） -->
+    <div class="loading-bar-row">
+      <div class="loading-bar-container">
+        <div class="loading-bar-fill" id="loadingBarFill">
+          <div class="loading-bar-shine"></div>
+        </div>
+      </div>
+      <div class="loading-percent" id="loadingPercent">0%</div>
+    </div>
+    <div class="loading-tip">首次打开需要加载时间，请耐心等待</div>
+  </div>
+</div>
+
+<!-- 页面说明文字 -->
+<div class="page-info">
+  <div class="title" id="guideTitle"></div>
+  <div class="guide" id="guideContent"></div>
+</div>
+<div class="disclaimer-box">
+  <span id="disclaimerText"></span>
+</div>
+<button class="fs-btn" id="fsBtn">⛶</button>
+<div class="bgm-volume-control" id="bgmVolumeControl">
+  <div class="bgm-volume-icon">🎵</div>
+  <input type="range" class="bgm-volume-slider" id="bgmVolumeSlider" min="0" max="100" value="35">
+</div>
+<div class="stage" id="stage">
+<!-- CFM币（图标+数字） -->
+<div id="cfmCoinDisplay" onclick="playClickSound();openRecharge()" style="position:absolute;left:1640px;top:16px;display:flex;align-items:center;gap:6px;z-index:30;cursor:pointer;padding:5px 10px;border-radius:8px">
+  <img src="images/common/coins/cfm_coin_icon.png" style="height:44px;width:auto;display:block;pointer-events:none">
+  <span id="cfmCoinNum" style="color:#fff;font-size:32px;font-weight:bold;line-height:44px;text-shadow:0 0 5px rgba(0,0,0,0.8);pointer-events:none">0</span>
+</div>
+<!-- 紫电兑换币（图标+数字） -->
+<div id="zidianPointsDisplay" style="position:absolute;left:1810px;top:16px;display:flex;align-items:center;gap:6px;z-index:20;pointer-events:none">
+  <img src="images/common/coins/zidian_coin_icon.png" style="height:44px;width:auto;display:block;pointer-events:none">
+  <span id="zidianPointsNum" style="color:#fff;font-size:32px;font-weight:bold;line-height:44px;text-shadow:0 0 5px rgba(0,0,0,0.8);pointer-events:none">0</span>
+</div>
+<!-- 熔岩兑换币（图标+数字） -->
+<div id="pointsDisplay" style="position:absolute;left:1980px;top:16px;display:flex;align-items:center;gap:6px;z-index:30;pointer-events:none">
+  <img src="images/common/coins/points_coin_icon.png" style="height:44px;width:auto;display:block;pointer-events:none">
+  <span id="pointsNum" style="color:#fff;font-size:32px;font-weight:bold;line-height:44px;text-shadow:0 0 5px rgba(0,0,0,0.9);pointer-events:none">0</span>
+</div>
+<!-- 火山币（图标+数字） -->
+<div id="gachaCoinDisplay" onclick="playClickSound();openShop()" style="position:absolute;left:2150px;top:16px;display:flex;align-items:center;gap:6px;z-index:30;cursor:pointer;padding:5px 10px;border-radius:8px">
+  <img src="images/common/coins/gacha_coin_icon.png" style="height:44px;width:auto;display:block;pointer-events:none">
+  <span id="gachaCoinNum" style="color:#fff;font-size:32px;font-weight:bold;line-height:44px;text-shadow:0 0 5px rgba(0,0,0,0.8);pointer-events:none">0</span>
+</div>
+<img class="layer layer-bg" id="homeBg" src="images/common/pages/home/pool_select_bg.png" draggable="false" alt="">
+<div id="totalDrawCount" style="display:none;">累计抽取：0</div>
+<img class="layer layer-weapon weapon-small" id="weaponFloat" src="images/common/pages/home/pool_0_weapon.png" draggable="false" alt="">
+<!-- 奖池选择模式 - 金色光晕 -->
+<div class="gold-glow" id="poolSelectGoldGlow" style="display:none;"></div>
+<!-- 奖池选择模式 - 热区层 -->
+<div class="pool-select-hit-layer" id="poolSelectHitLayer" style="display:block;"></div>
+<div class="btn-layer" id="btnLayer" style="display:none;">
+<div class="hotspot" data-name="返回" style="left:25px;top:25px;width:70px;height:70px"></div>
+  <div class="hotspot" data-name="仓库" onclick="openWarehouse()" style="left:20px;top:30px;width:200px;height:110px"></div>
+<div class="hotspot" data-name="兑换" style="left:35px;top:180px;width:170px;height:90px"></div>
+<div class="hotspot" data-name="暂存箱" onclick="openStorage()" style="left:35px;top:290px;width:170px;height:90px;display:none"></div>
+<div class="hotspot" data-name="奖励一览" onclick="openReward()" style="left:35px;top:400px;width:170px;height:90px"></div>
+<div class="hotspot" data-name="切换奖励" onclick="playBackSound();openPoolSelect()" style="left:866px;top:572px;width:164px;height:33px"></div>
+<div class="hotspot" data-name="资源2" style="left:1880px;top:25px;width:75px;height:70px"></div>
+<div class="hotspot pulse" data-name="抽奖1次" onclick="playClickSound();openGachaSingle()" style="left:660px;top:915px;width:300px;height:115px"></div>
+<div class="hotspot pulse" data-name="抽奖10次" onclick="playClickSound();openGachaTen()" style="left:1100px;top:915px;width:450px;height:115px"></div>
+<div class="hotspot" data-name="跳过动画" style="left:2040px;top:935px;width:210px;height:95px"></div>
+<div class="hotspot" data-name="翻页左" style="left:20px;top:945px;width:65px;height:65px"></div>
+<div class="hotspot" data-name="翻页右" style="left:2255px;top:945px;width:65px;height:65px"></div>
+</div>
+</div>
+<script>
+// ========== 小盒子架构 - 获取道具图片 ==========
+function getItemImage(itemName, type) {
+  if (!itemName) return '';
+  type = type || 'small';
+  
+  // 从ITEM_BOX_CONFIG中获取道具配置
+  var config = window.ITEM_BOX_CONFIG ? window.ITEM_BOX_CONFIG[itemName] : null;
+  if (!config) {
+    // 兜底：尝试直接拼接路径
+    return '../images/items_box/' + itemName + '/' + type + '.png';
+  }
+  
+  // 如果请求showcase但道具没有showcase，返回small
+  if (type === 'showcase' && !config.has_showcase) {
+    return '../images/items_box/' + itemName + '/small.png';
+  }
+  
+  // 如果请求small但道具有showcase，返回showcase（复用）
+  if (type === 'small' && config.has_showcase) {
+    return '../images/items_box/' + itemName + '/showcase.png';
+  }
+  
+  return '../images/items_box/' + itemName + '/' + type + '.png';
+}
+
+// 获取道具品质
+function getItemQuality(itemName) {
+  if (!itemName) return 'white';
+  var config = window.ITEM_BOX_CONFIG ? window.ITEM_BOX_CONFIG[itemName] : null;
+  return config ? config.quality : 'white';
+}
+
+// 判断道具是否有出货动画
+function hasShowcase(itemName) {
+  if (!itemName) return false;
+  var config = window.ITEM_BOX_CONFIG ? window.ITEM_BOX_CONFIG[itemName] : null;
+  return config ? config.has_showcase : false;
+}
+// ========== 预加载功能 ==========
+var PRELOAD_RESOURCES = [
+  'audio/bgm/bgm.m4a',
+  'audio/buy/close.m4a',
+  'audio/gacha/click.m4a',
+  'audio/gacha/confirm.m4a',
+  'audio/gacha/reward.m4a',
+  'audio/gacha/showcase_start.m4a',
+  'audio/ui/action_confirm.m4a',
+  'audio/ui/back.m4a',
+  'audio/ui/open.m4a',
+  'audio/warehouse/open.m4a',
+  'images/common/animation_bg/bg_button_noname.webp',
+  'images/common/animation_bg/bg_start.webp',
+  'images/common/coins/cfm_coin_icon.png',
+  'images/common/coins/gacha_coin_icon.png',
+  'images/common/coins/points_coin_icon.png',
+  'images/common/coins/zidian_coin_icon.png',
+  'images/common/pages/buy/confirm_bg.png',
+  'images/common/pages/buy/shop_bg_0.png',
+  'images/common/pages/buy/shop_bg_1.png',
+  'images/common/pages/buy/shop_bg_2.png',
+  'images/common/pages/buy/shop_bg_3.png',
+  'images/common/pages/decompose/single_bg.png',
+  'images/common/pages/decompose/ten_bg.png',
+  'images/pages/exchange/confirm_bg.png',
+  'images/common/pages/gacha/single_bg.png',
+  'images/common/pages/gacha/ten_bg.png',
+  'images/common/pages/home/pool_0_bg.png',
+  'images/common/pages/home/pool_1_bg.png',
+  'images/common/pages/home/pool_2_bg.png',
+  'images/common/pages/home/pool_3_bg.png',
+  'images/common/pages/home/pool_4_bg.png',
+  'images/common/pages/home/pool_5_bg.png',
+  'images/common/pages/home/pool_6_bg.png',
+  'images/common/pages/home/pool_0_weapon.png',
+  'images/common/pages/home/pool_select_bg.png',
+  'images/common/pages/home/transition_bg.png',
+  'images/common/pages/recharge/bg.jpg',
+  'images/common/pages/recharge/payment_bg.png',
+  'images/common/pages/recharge/payment_success_bg.png',
+  'images/common/pages/reward/bg.png',
+  'images/common/pages/warehouse/bg.png',
+  'images/common/slot/gold.png',
+  'images/common/slot/purple.png',
+  'images/common/slot/red.png',
+  'images/common/slot/white.png',
+  'images/items_box/熔岩兑换币/small.png',
+  'images/items_box/紫电兑换币/small.png',
+  'images/items_box/钻石/small.png',
+  'images/items_box/M4A1-雷霆王者/showcase.png',
+  'images/items_box/M4A1-雷霆王者-燃竞之巅/showcase.png',
+  'images/items_box/M4A1-雷霆王者-紫电熔岩/showcase.png',
+  'images/items_box/AK47-雷霆王者/showcase.png',
+  'images/items_box/AK47-雷霆王者-燃竞之巅/showcase.png',
+  'images/items_box/AK47-雷霆王者-紫电熔岩/showcase.png',
+  'images/items_box/巴雷特-雷霆王者/showcase.png',
+  'images/items_box/巴雷特-雷霆王者-燃竞之巅/showcase.png',
+  'images/items_box/巴雷特-雷霆王者-紫电熔岩/showcase.png',
+  'images/items_box/COP357-雷霆王者/showcase.png',
+  'images/items_box/COP357-雷霆王者-燃竞之巅/showcase.png',
+  'images/items_box/COP357-雷霆王者-紫电熔岩/showcase.png',
+  'images/items_box/雷霆王者之锋/showcase.png',
+  'images/items_box/雷霆王者之锋-燃竞之巅/showcase.png',
+  'images/items_box/雷霆王者之锋-紫电熔岩/showcase.png'
+];
+
+var preloadLoadedCount = 0;
+var preloadTotalCount = PRELOAD_RESOURCES.length;
+var preloadFinished = false;
+
+function onPreloadResourceLoaded(path) {
+  preloadLoadedCount++;
+  var percent = Math.min(100, (preloadLoadedCount / preloadTotalCount) * 100);
+  var progressBar = document.getElementById('loadingBarFill');
+  var progressText = document.getElementById('loadingPercent');
+  var stageText = document.getElementById('loadingStageText');
+  
+  if (progressBar) progressBar.style.width = percent + '%';
+  if (progressText) progressText.textContent = Math.floor(percent) + '%';
+  if (stageText) {
+    if (percent < 30) stageText.textContent = '正在加载图片资源···';
+    else if (percent < 70) stageText.textContent = '正在加载音效资源···';
+    else if (percent < 100) stageText.textContent = '正在初始化模拟器···';
+    else stageText.textContent = '加载完成！';
+  }
+  
+  if (preloadLoadedCount >= preloadTotalCount && !preloadFinished) {
+    preloadFinished = true;
+    setTimeout(function() {
+      var loadingOverlay = document.getElementById('loadingOverlay');
+      if (loadingOverlay) {
+        loadingOverlay.classList.add('hidden');
+        setTimeout(function() {
+          loadingOverlay.style.display = 'none';
+        }, 500);
+      }
+    }, 300);
+  }
+}
+
+function preloadResources() {
+  for (var i = 0; i < PRELOAD_RESOURCES.length; i++) {
+    (function(path) {
+      var ext = path.split('.').pop().toLowerCase();
+      if (ext === 'm4a' || ext === 'mp3' || ext === 'wav') {
+        var audio = new Audio();
+        audio.onloadeddata = function() { onPreloadResourceLoaded(path); };
+        audio.onerror = function() { onPreloadResourceLoaded(path); };
+        audio.src = path;
+      } else {
+        var img = new Image();
+        img.onload = function() { onPreloadResourceLoaded(path); };
+        img.onerror = function() { onPreloadResourceLoaded(path); };
+        img.src = path;
+      }
+    })(PRELOAD_RESOURCES[i]);
+  }
+}
+
+
+// ========== 多奖池切换系统 ==========
+var currentPool = 'pool_select'; // 默认进入奖池选择模式
+var POOL_BG_MAP = {
+  'm4': 'images/common/pages/home/pool_0_bg.png',
+  'ak': 'images/common/pages/home/pool_1_bg.png',
+  'barrett': 'images/common/pages/home/pool_2_bg.png',
+  'm12s': 'images/common/pages/home/pool_3_bg.png',
+  'ting': 'images/common/pages/home/pool_4_bg.png',
+  'cop': 'images/common/pages/home/pool_5_bg.png',
+  'feng': 'images/common/pages/home/pool_6_bg.png',
+  'pool_select': 'images/common/pages/home/pool_select_bg.png'
+};
+var POOL_WEAPON_MAP = {
+  'm4': 'images/common/pages/home/weapon_m4.png',
+  'ak': 'images/common/pages/home/weapon_ak.png',
+  'barrett': 'images/common/pages/home/weapon_barrett.png',
+  'm12s': 'images/common/pages/home/weapon_m12s.png',
+  'ting': 'images/common/pages/home/weapon_ting.png',
+  'cop': 'images/common/pages/home/weapon_cop.png',
+  'feng': 'images/common/pages/home/weapon_feng.png',
+  'pool_select': 'images/common/pages/home/pool_0_weapon.png'
+};
+
+// ========== 奖池选择模式 - 武器中心点配置（相对于2340x1080） ==========
+var POOL_SELECT_WEAPON_CENTERS = {
+  barrett: { x: 1354, y: 352, r: 200, name: '巴雷特-雷霆王者' },
+  ak:      { x: 1273, y: 564, r: 180, name: 'AK47-雷霆王者' },
+  feng:    { x: 755,  y: 558, r: 200, name: '雷霆王者之锋' },
+  m12s:    { x: 1685, y: 572, r: 220, name: 'M12S-雷霆王者' },
+  ting:    { x: 725,  y: 670, r: 320, name: '王者之霆' },
+  cop:     { x: 1100, y: 605, r: 180, name: 'COP357-雷霆王者' },
+  m4:      { x: 1591, y: 734, r: 280, name: 'M4A1-雷霆王者' }
+};
+// 确定按钮热区
+var POOL_SELECT_CONFIRM_BTN = { x: 800, y: 880, w: 740, h: 140 };
+// 当前选中的奖池
+var poolSelectSelectedPool = null;
+// 是否在奖池选择模式
+var isPoolSelectMode = true; // 默认进入奖池选择模式
+
+// ========== 奖池选择模式 - 金色光晕 ==========
+function showPoolSelectGoldGlow(poolId){
+  var glow = document.getElementById('poolSelectGoldGlow');
+  var center = POOL_SELECT_WEAPON_CENTERS[poolId];
+  if(!glow || !center) return;
+  var r = center.r * 1.3;
+  glow.style.width = (r * 2) + 'px';
+  glow.style.height = (r * 2) + 'px';
+  glow.style.left = (center.x - r) + 'px';
+  glow.style.top = (center.y - r) + 'px';
+  glow.style.display = 'block';
+}
+function hidePoolSelectGoldGlow(){
+  var glow = document.getElementById('poolSelectGoldGlow');
+  if(glow) glow.style.display = 'none';
+}
+
+// ========== 奖池选择模式 - 获取点击位置对应的武器 ==========
+function getPoolSelectWeaponAtPosition(x, y){
+  var nearestPool = null;
+  var nearestDist = Infinity;
+  for (var poolId in POOL_SELECT_WEAPON_CENTERS){
+    var center = POOL_SELECT_WEAPON_CENTERS[poolId];
+    var dist = Math.sqrt((x - center.x) * (x - center.x) + (y - center.y) * (y - center.y));
+    if (dist < center.r && dist < nearestDist){
+      nearestDist = dist;
+      nearestPool = poolId;
+    }
+  }
+  return nearestPool;
+}
+
+// ========== 奖池选择模式 - 坐标转换 ==========
+function getPoolSelectStageCoords(e){
+  var stage = document.getElementById('stage');
+  if(!stage) return {x:0, y:0};
+  var rect = stage.getBoundingClientRect();
+  var scaleX = 2340 / rect.width;
+  var scaleY = 1080 / rect.height;
+  return {
+    x: (e.clientX - rect.left) * scaleX,
+    y: (e.clientY - rect.top) * scaleY
+  };
+}
+
+// ========== 奖池选择模式 - 进入/退出 ==========
+function enterPoolSelectMode(){
+  var bg = document.getElementById('homeBg');
+  var weapon = document.getElementById('weaponFloat');
+  var transition = document.getElementById('transitionModal');
+  
+  // 显示转接页面，避免切换过程中黑屏或闪烁
+  if(transition){
+    if(typeof layoutTransition === 'function') layoutTransition();
+    transition.classList.add('show');
+  }
+  
+  // 预加载奖池选择页面的背景图和武器图
+  var newBg = new Image();
+  var newWeapon = new Image();
+  var loaded = 0;
+  var total = 2;
+  function checkComplete(){
+    loaded++;
+    if(loaded >= total){
+      // 替换背景和武器
+      if(bg && POOL_BG_MAP['pool_select']) bg.src = POOL_BG_MAP['pool_select'];
+      if(weapon && POOL_WEAPON_MAP['pool_select']) weapon.src = POOL_WEAPON_MAP['pool_select'];
+      
+      // 奖池选择模式下武器图缩小
+      if(weapon) weapon.classList.add('weapon-small');
+      
+      // 显示金色光晕和热区层
+      document.getElementById('poolSelectGoldGlow').style.display = 'none';
+      document.getElementById('poolSelectHitLayer').style.display = 'block';
+      
+      // 隐藏按钮层（禁用所有原有按钮）
+      document.getElementById('btnLayer').style.display = 'none';
+      
+      // 重置选中状态
+      poolSelectSelectedPool = null;
+      
+      // 设置标志位
+      isPoolSelectMode = true;
+      
+      // 延迟一小段时间再隐藏转接页面，确保渲染完成
+      setTimeout(function(){
+        if(transition) transition.classList.remove('show');
+      }, 100);
+    }
+  }
+  newBg.onload = checkComplete;
+  newBg.onerror = checkComplete;
+  newWeapon.onload = checkComplete;
+  newWeapon.onerror = checkComplete;
+  newBg.src = POOL_BG_MAP['pool_select'];
+  newWeapon.src = POOL_WEAPON_MAP['pool_select'];
+}
+
+function exitPoolSelectMode(poolId){
+  // 切换到选中的奖池
+  switchPool(poolId);
+  
+  // 恢复武器图大小
+  var weapon = document.getElementById('weaponFloat');
+  if(weapon) weapon.classList.remove('weapon-small');
+  
+  // 隐藏金色光晕和热区层
+  document.getElementById('poolSelectGoldGlow').style.display = 'none';
+  document.getElementById('poolSelectHitLayer').style.display = 'none';
+  
+  // 显示按钮层
+  document.getElementById('btnLayer').style.display = 'block';
+  
+  // 设置标志位
+  isPoolSelectMode = false;
+}
+
+// ========== 奖池选择模式 - 点击处理 ==========
+function initPoolSelectHitLayer(){
+  var hitLayer = document.getElementById('poolSelectHitLayer');
+  if(!hitLayer) return;
+  hitLayer.addEventListener('click', function(e){
+    var pos = getPoolSelectStageCoords(e);
+    
+    // 先检查是否点了确定按钮
+    if (pos.x >= POOL_SELECT_CONFIRM_BTN.x && pos.x <= POOL_SELECT_CONFIRM_BTN.x + POOL_SELECT_CONFIRM_BTN.w &&
+        pos.y >= POOL_SELECT_CONFIRM_BTN.y && pos.y <= POOL_SELECT_CONFIRM_BTN.y + POOL_SELECT_CONFIRM_BTN.h){
+      if (poolSelectSelectedPool){
+        playBackSound(); // 确定按钮成功执行后播放back音效
+        exitPoolSelectMode(poolSelectSelectedPool);
+      }
+      return;
+    }
+    
+    // 检查是否点了武器
+    var poolId = getPoolSelectWeaponAtPosition(pos.x, pos.y);
+    if (poolId){
+      playClickSound(); // 选中池子时播放点击音效
+      poolSelectSelectedPool = poolId;
+      showPoolSelectGoldGlow(poolId);
+    }
+  });
+}
+// 页面加载完成后初始化
+if(document.readyState === 'loading'){
+  document.addEventListener('DOMContentLoaded', initPoolSelectHitLayer);
+}else{
+  initPoolSelectHitLayer();
+}
+
+// 预加载所有奖池的背景图和武器图，避免切换时闪烁
+(function(){
+  var pools = ['m4','ak','barrett','m12s','ting','cop','feng'];
+  pools.forEach(function(pool){
+    if(POOL_BG_MAP[pool]){
+      var bg = new Image();
+      bg.src = POOL_BG_MAP[pool];
+    }
+    if(POOL_WEAPON_MAP[pool]){
+      var weapon = new Image();
+      weapon.src = POOL_WEAPON_MAP[pool];
+    }
+  });
+})();
+
+// 转接页面横屏缩放（和选择页/仓库一致）
+function layoutTransition(){
+  var stage = document.getElementById('transitionStage');
+  if(!stage) return;
+  var sw = window.innerWidth, sh = window.innerHeight;
+  var s = Math.min(sw/2340, sh/1080);
+  stage.style.transform = 'scale(' + s + ')';
+  stage.style.left = (sw - 2340*s)/2 + 'px';
+  stage.style.top = (sh - 1080*s)/2 + 'px';
+}
+window.addEventListener('resize', layoutTransition);
+layoutTransition();
+
+function openPoolSelect(){
+  // 第八奖池模式：直接进入奖池选择模式，无需iframe
+  enterPoolSelectMode();
+}
+
+function closePoolSelect(){
+  // 兼容保留：退出奖池选择模式，回到当前奖池
+  // 如果当前在奖池选择模式，回到默认的m4奖池
+  if(isPoolSelectMode){
+    exitPoolSelectMode('m4');
+  }
+}
+
+function switchPool(poolId){
+  // pool_select是特殊模式，不是真正的奖池，不允许通过switchPool切换
+  if(poolId === 'pool_select') return;
+  if(!POOL_BG_MAP[poolId] || !POOL_WEAPON_MAP[poolId]) return;
+  currentPool = poolId;
+  // 切换抽奖概率表（来自gacha_base.js的7个奖池配置）
+  if(window.GACHA_POOLS && window.GACHA_POOLS[poolId]){
+    window.CURRENT_POOL = poolId;
+    window.GACHA_BASE_POOL = window.GACHA_POOLS[poolId];
+  }
+  var homeBg = document.getElementById('homeBg');
+  var weaponFloat = document.getElementById('weaponFloat');
+  var transition = document.getElementById('transitionModal');
+  
+  // 显示转接页面，避免切换过程中黑屏或闪烁
+  if(transition){
+    if(typeof layoutTransition === 'function') layoutTransition();
+    transition.classList.add('show');
+  }
+  
+  // 等两张新图片都加载完成后再替换，避免闪烁
+  var newBg = new Image();
+  var newWeapon = new Image();
+  var loaded = 0;
+  var total = 2;
+  function checkComplete(){
+    loaded++;
+    if(loaded >= total){
+      if(homeBg) homeBg.src = POOL_BG_MAP[poolId];
+      if(weaponFloat) weaponFloat.src = POOL_WEAPON_MAP[poolId];
+      // 图片替换完成后，延迟一小段时间再隐藏转接页面，确保渲染完成
+      setTimeout(function(){
+        if(transition) transition.classList.remove('show');
+      }, 100);
+    }
+  }
+  newBg.onload = checkComplete;
+  newBg.onerror = checkComplete;
+  newWeapon.onload = checkComplete;
+  newWeapon.onerror = checkComplete;
+  newBg.src = POOL_BG_MAP[poolId];
+  newWeapon.src = POOL_WEAPON_MAP[poolId];
+}
+
+// 熔岩夺宝：禁用神话加赠（保留代码，不触发）
+var enableMythicBonus = false;
+
+// ========== 音效系统（优化版：多对象池+预加载+即时播放） ==========
+// 使用多个Audio对象池，避免连续点击时的播放冲突
+var AUDIO_POOL_SIZE = 5;
+var audioClickPool = [];
+var audioClosePool = [];
+var audioOpenPool = [];
+var audioBackPool = [];
+var audioWarehouseOpenPool = [];
+var audioStorageBackPool = [];
+var audioRewardPool = [];
+var audioClickIndex = 0;
+var audioCloseIndex = 0;
+var audioOpenIndex = 0;
+var audioBackIndex = 0;
+var audioWarehouseOpenIndex = 0;
+var audioStorageBackIndex = 0;
+var audioRewardIndex = 0;
+
+// 初始化音效对象池
+for(var i = 0; i < AUDIO_POOL_SIZE; i++){
+  var ac = new Audio('audio/gacha/click.m4a');
+  ac.preload = 'auto';
+  audioClickPool.push(ac);
+  
+  var ao = new Audio('audio/buy/close.m4a');
+  ao.preload = 'auto';
+  audioClosePool.push(ao);
+  
+  // 打开音效（兑换商城/暂存箱/奖励一览）
+  var aopen = new Audio('audio/ui/open.m4a');
+  aopen.preload = 'auto';
+  audioOpenPool.push(aopen);
+  
+  // 返回音效（返回键）
+  var aback = new Audio('audio/ui/back.m4a');
+  aback.preload = 'auto';
+  audioBackPool.push(aback);
+  
+  // 仓库打开音效
+  var awh = new Audio('audio/warehouse/open.m4a');
+  awh.preload = 'auto';
+  audioWarehouseOpenPool.push(awh);
+  
+  // 暂存箱返回键音效
+  var asb = new Audio('audio/storage/back.m4a');
+  asb.preload = 'auto';
+  audioStorageBackPool.push(asb);
+  
+  // 恭喜获得页面音效
+  var ar = new Audio('audio/gacha/reward.m4a');
+  ar.preload = 'auto';
+  audioRewardPool.push(ar);
+}
+
+// 页面加载后解锁音频（解决浏览器自动播放策略）
+document.addEventListener('click', function unlockAudio(){
+  try{
+    audioClickPool[0].play().then(function(){
+      audioClickPool[0].pause();
+      audioClickPool[0].currentTime = 0;
+    }).catch(function(e){});
+  }catch(e){}
+  document.removeEventListener('click', unlockAudio);
+}, {once: true});
+
+// 播放点击音效（单抽/十连/抽奖币按钮）
+function playClickSound(){
+  try{
+    var audio = audioClickPool[audioClickIndex];
+    audioClickIndex = (audioClickIndex + 1) % AUDIO_POOL_SIZE;
+    audio.currentTime = 0;
+    audio.play().catch(function(e){});
+  }catch(e){}
+}
+
+// 播放关闭音效（关闭购买抽奖币页面）
+function playCloseSound(){
+  try{
+    var audio = audioClosePool[audioCloseIndex];
+    audioCloseIndex = (audioCloseIndex + 1) % AUDIO_POOL_SIZE;
+    audio.currentTime = 0;
+    audio.play().catch(function(e){});
+  }catch(e){}
+}
+
+// 播放打开音效（兑换商城/暂存箱/奖励一览）
+function playOpenSound(){
+  try{
+    var audio = audioOpenPool[audioOpenIndex];
+    audioOpenIndex = (audioOpenIndex + 1) % AUDIO_POOL_SIZE;
+    audio.currentTime = 0;
+    audio.play().catch(function(e){});
+  }catch(e){}
+}
+
+// 播放返回音效（返回键）
+function playBackSound(){
+  try{
+    var audio = audioBackPool[audioBackIndex];
+    audioBackIndex = (audioBackIndex + 1) % AUDIO_POOL_SIZE;
+    audio.currentTime = 0;
+    audio.play().catch(function(e){});
+  }catch(e){}
+}
+
+// ===== 背景音乐系统 =====
+var bgmAudio = new Audio('audio/bgm/bgm.m4a');
+bgmAudio.loop = true;
+bgmAudio.volume = 0.35;
+var bgmStarted = false;
+
+function startBGM(){
+  try{
+    if(!bgmStarted){
+      bgmAudio.play().then(function(){
+        bgmStarted = true;
+      }).catch(function(e){});
+    }
+  }catch(e){}
+}
+
+function restartBGM(){
+  try{
+    bgmAudio.pause();
+    bgmAudio.currentTime = 0;
+    bgmAudio.play().catch(function(e){});
+  }catch(e){}
+}
+
+// 页面加载后立刻尝试播放背景音乐
+// 如果被浏览器自动播放策略阻止，等用户首次点击再播放
+window.addEventListener('load', function(){
+  bgmAudio.play().then(function(){
+    bgmStarted = true;
+  }).catch(function(e){
+    // 被浏览器阻止，等用户首次点击再播放
+    document.addEventListener('click', function startBGMonFirstClick(){
+      startBGM();
+      document.removeEventListener('click', startBGMonFirstClick);
+    }, {once: true});
+  });
+});
+// ===== 背景音乐音量调节 =====
+var bgmVolumeSlider = document.getElementById('bgmVolumeSlider');
+if(bgmVolumeSlider){
+  bgmVolumeSlider.addEventListener('input', function(){
+    var volume = parseInt(this.value) / 100;
+    bgmAudio.volume = volume;
+  });
+}
+// ===== 背景音乐音量调节结束 =====
+
+// ===== 背景音乐系统结束 =====
+
+
+// 播放仓库打开音效
+function playWarehouseOpenSound(){
+  try{
+    var audio = audioWarehouseOpenPool[audioWarehouseOpenIndex];
+    audioWarehouseOpenIndex = (audioWarehouseOpenIndex + 1) % AUDIO_POOL_SIZE;
+    audio.currentTime = 0;
+    audio.play().catch(function(e){});
+  }catch(e){}
+}
+
+// 播放暂存箱返回键音效
+function playStorageBackSound(){
+  try{
+    var audio = audioStorageBackPool[audioStorageBackIndex];
+    audioStorageBackIndex = (audioStorageBackIndex + 1) % AUDIO_POOL_SIZE;
+    audio.currentTime = 0;
+    audio.play().catch(function(e){});
+  }catch(e){}
+}
+
+// 播放恭喜获得页面音效
+function playRewardSound(){
+  try{
+    var audio = audioRewardPool[audioRewardIndex];
+    audioRewardIndex = (audioRewardIndex + 1) % AUDIO_POOL_SIZE;
+    audio.currentTime = 0;
+    audio.play().catch(function(e){});
+  }catch(e){}
+}
+// ================================
+
+
+var currentBuyTier = 0;
+var gachaCoinCount = 0;
+var totalDrawCount = 0; // 累计抽取次数
+function updateTotalDrawCount(){
+  var el = document.getElementById('totalDrawCount');
+  if(el) el.textContent = '累计抽取：' + totalDrawCount;
+}
+var cfmCoinCount = 0;
+var pointsCount = 0;
+var zidianPointsCount = 0; // 紫电兑换币
+var warehouseItems = [];
+var storageItems = [];
+
+// 道具名称到item小图路径的映射表（加赠道具存入暂存箱时统一用item小图）
+var ITEM_SMALL_IMAGES = {
+  '传说女帝': 'images/items_box/传说女帝/small.png',
+  '王者之魄': 'images/items_box/王者之魄/small.png',
+  '王者之翼': 'images/items_box/王者之翼/small.png',
+  '王者之魄-传说光耀': 'images/items_box/王者之魄-传说光耀/small.png',
+  '王者之翼-传说夜影': 'images/items_box/王者之翼-传说夜影/small.png',
+  'SCAR Light-玄豹': 'images/items_box/SCAR Light-玄豹/small.png',
+  '左轮-玄豹': 'images/items_box/左轮-玄豹/small.png',
+  '丛林匕首-玄豹': 'images/items_box/丛林匕首-玄豹/small.png',
+  '手雷-玄豹': 'images/items_box/手雷-玄豹/small.png',
+  '闪光弹-玄豹': 'images/items_box/闪光弹-玄豹/small.png',
+  '烟雾弹-玄豹': 'images/items_box/烟雾弹-玄豹/small.png',
+  '最终消灭-堕落天使': 'images/items_box/最终消灭-堕落天使/small.png',
+  '狙击枪线-光与夜': 'images/items_box/狙击枪线-光与夜/small.png',
+  '夜影精灵玩偶': 'images/items_box/夜影精灵玩偶/small.png',
+  '光耀精灵玩偶': 'images/items_box/光耀精灵玩偶/small.png',
+  '夜影精灵挂饰': 'images/items_box/夜影精灵挂饰/small.png',
+  '光耀精灵挂饰': 'images/items_box/光耀精灵挂饰/small.png',
+  '抛物线-光与夜': 'images/items_box/抛物线-光与夜/small.png',
+  '印花-玄豹': 'images/items_box/印花-玄豹/small.png',
+  '印花-夜影光耀': 'images/items_box/印花-夜影光耀/small.png',
+  '王者之翼-夜影之触': 'images/items_box/王者之翼-夜影之触/small.png',
+  '王者之魄-光耀之触': 'images/items_box/王者之魄-光耀之触/small.png',
+  '王者之翼-夜影之殇': 'images/items_box/王者之翼-夜影之殇/small.png',
+  '王者之魄-光耀之殇': 'images/items_box/王者之魄-光耀之殇/small.png',
+  '王者之翼-夜影之印': 'images/items_box/王者之翼-夜影之印/small.png',
+  '王者之魄-光耀之印': 'images/items_box/王者之魄-光耀之印/small.png',
+  'SCAR Light-玄豹之触': 'images/items_box/SCAR Light-玄豹之触/small.png',
+  'SCAR Light-玄豹-豹慑之殇': 'images/items_box/SCAR Light-玄豹-豹慑之殇/small.png',
+  'SCAR Light-玄豹-豹慑之印': 'images/items_box/SCAR Light-玄豹-豹慑之印/small.png',
+  '熔岩兑换币×18': 'images/items_box/熔岩兑换币/small.png',
+  '熔岩兑换币×12': 'images/items_box/熔岩兑换币/small.png',
+  '熔岩兑换币×6': 'images/items_box/熔岩兑换币/small.png',
+  '熔岩兑换币×3': 'images/items_box/熔岩兑换币/small.png',
+  '熔岩兑换币×2': 'images/items_box/熔岩兑换币/small.png',
+  // 熔岩夺宝道具
+  '喷火龙玩偶': 'images/items_box/喷火龙玩偶/small.png',
+  '熔岩背包': 'images/items_box/熔岩背包/small.png',
+  '熔岩火龙挂饰': 'images/items_box/熔岩火龙挂饰/small.png',
+  '燃尽挂饰': 'images/items_box/燃尽挂饰/small.png',
+  '熔岩火龙喷漆': 'images/items_box/熔岩火龙喷漆/small.png',
+  '印花_熔岩火山': 'images/items_box/印花_熔岩火山/small.png',
+  '熔岩之触': 'images/items_box/熔岩之触/small.png',
+  '熔岩之殇': 'images/items_box/熔岩之殇/small.png',
+  '熔岩之印': 'images/items_box/熔岩之印/small.png',
+  '熔岩光效': 'images/items_box/熔岩光效/small.png',
+  // 熔岩夺宝 - 各奖池燃竞之巅（等用户发图后替换）
+  'M4A1-雷霆王者-燃竞之巅': 'images/items_box/M4A1-雷霆王者-燃竞之巅/small.png',
+  'AK47-雷霆王者-燃竞之巅': 'images/items_box/AK47-雷霆王者-燃竞之巅/small.png',
+  '巴雷特-雷霆王者-燃竞之巅': 'images/items_box/巴雷特-雷霆王者-燃竞之巅/small.png',
+  'M12S-雷霆王者-燃竞之巅': 'images/items_box/M12S-雷霆王者-燃竞之巅/small.png',
+  '王者之霆-燃竞之巅': 'images/items_box/王者之霆-燃竞之巅/small.png',
+  'COP357-雷霆王者-燃竞之巅': 'images/items_box/COP357-雷霆王者-燃竞之巅/small.png',
+  '雷霆王者之锋-燃竞之巅': 'images/items_box/雷霆王者之锋-燃竞之巅/small.png',
+  // 熔岩夺宝 - 各奖池武器特效（A池通用图，名称带武器名）
+  'M4A1-雷霆王者-熔岩之触': 'images/items_box/熔岩之触/small.png',
+  'AK47-雷霆王者-熔岩之触': 'images/items_box/熔岩之触/small.png',
+  '巴雷特-雷霆王者-熔岩之触': 'images/items_box/熔岩之触/small.png',
+  'M12S-雷霆王者-熔岩之触': 'images/items_box/熔岩之触/small.png',
+  '王者之霆-熔岩之触': 'images/items_box/熔岩之触/small.png',
+  'M4A1-雷霆王者-熔岩之殇': 'images/items_box/熔岩之殇/small.png',
+  'AK47-雷霆王者-熔岩之殇': 'images/items_box/熔岩之殇/small.png',
+  '巴雷特-雷霆王者-熔岩之殇': 'images/items_box/熔岩之殇/small.png',
+  'M12S-雷霆王者-熔岩之殇': 'images/items_box/熔岩之殇/small.png',
+  '王者之霆-熔岩之殇': 'images/items_box/熔岩之殇/small.png',
+  'M4A1-雷霆王者-熔岩之印': 'images/items_box/熔岩之印/small.png',
+  'AK47-雷霆王者-熔岩之印': 'images/items_box/熔岩之印/small.png',
+  '巴雷特-雷霆王者-熔岩之印': 'images/items_box/熔岩之印/small.png',
+  'M12S-雷霆王者-熔岩之印': 'images/items_box/熔岩之印/small.png',
+  '王者之霆-熔岩之印': 'images/items_box/熔岩之印/small.png',
+  'M4A1-雷霆王者-熔岩光效': 'images/items_box/熔岩光效/small.png',
+  'AK47-雷霆王者-熔岩光效': 'images/items_box/熔岩光效/small.png',
+  '巴雷特-雷霆王者-熔岩光效': 'images/items_box/熔岩光效/small.png',
+  'M12S-雷霆王者-熔岩光效': 'images/items_box/熔岩光效/small.png',
+  '王者之霆-熔岩光效': 'images/items_box/熔岩光效/small.png',
+};
+
+
+// ========== 额外加赠概率表 ==========
+var BONUS_ITEM_POOL = window.BONUS_EXTRA_POOL || [];
+
+// 额外加赠状态
+var bonusPending = false; // 是否有待处理的额外加赠
+var bonusCurrentReward = null; // 当前额外加赠的奖励
+var isBonusActive = false; // 额外加赠是否正在进行中（状态锁）
+var lastBonusDrawCount = 0; // 上一次触发额外加赠时的总次数
+var bonusRewardA = null; // 特殊奖池A池奖励（兑换币）
+var bonusRewardB = null; // 特殊奖池B池奖励（随机道具）
+
+// 特殊奖池概率表
+var BONUS_POOL_A = window.BONUS_POOL_A || [];
+var BONUS_POOL_B = window.BONUS_POOL_B || [];
+
+// 从指定概率池中抽奖
+function drawFromPool(pool){
+  var totalWeight = 0;
+  for(var i = 0; i < pool.length; i++){
+    totalWeight += pool[i].weight;
+  }
+  var random = Math.random() * totalWeight;
+  var cumulative = 0;
+  for(var i = 0; i < pool.length; i++){
+    cumulative += pool[i].weight;
+    if(random < cumulative){
+      return pool[i];
+    }
+  }
+  return pool[pool.length - 1];
+}
+
+// ========== 神话加赠概率表 ==========
+var MYTHIC_ITEM_POOL = window.BONUS_MYTHIC_POOL || [];
+
+// 神话加赠状态
+var mythicPending = false; // 是否有待处理的神话加赠
+var mythicCurrentReward = null; // 当前神话加赠的奖励
+var isMythicActive = false; // 神话加赠是否正在进行中（状态锁）
+var lastMythicDrawCount = 0; // 上一次触发神话加赠时的总次数
+function updateGachaCoinDisplay(){
+  var el = document.getElementById('gachaCoinNum');
+  if(el) el.textContent = gachaCoinCount;
+}
+function updatePointsDisplay(){
+  var el = document.getElementById('pointsNum');
+  if(el) el.textContent = pointsCount;
+  // 传递熔岩兑换币数量给兑换商城
+  try{
+    var exchangeIframe = document.getElementById('exchangeIframe');
+    if(exchangeIframe && exchangeIframe.contentWindow){
+      exchangeIframe.contentWindow.postMessage({type:'updatePoints', points: pointsCount}, '*');
+    }
+  }catch(e){}
+}
+function updateCfmCoinDisplay(){
+  var el = document.getElementById('cfmCoinNum');
+  if(el) el.textContent = cfmCoinCount;
+  // 传递CFM币数量给充值页面
+  try{
+    var rechargeIframe = document.getElementById('rechargeIframe');
+    if(rechargeIframe && rechargeIframe.contentWindow){
+      rechargeIframe.contentWindow.postMessage({type:'updateCfmCoin', count: cfmCoinCount}, '*');
+    }
+  }catch(e){}
+}
+function updateZidianPointsDisplay(){
+  var el = document.getElementById('zidianPointsNum');
+  if(el) el.textContent = zidianPointsCount;
+}
+(function(){
+var stage=document.getElementById('stage');
+function layout(){
+var s=Math.min(window.innerWidth/2340,window.innerHeight/1080);
+stage.style.transform='scale('+s+')';
+var loadingStage = document.getElementById('loadingStage');
+if(loadingStage){
+  loadingStage.style.transform='scale('+s+')';
+  // 居中显示
+  loadingStage.style.left=((window.innerWidth-2340*s)/2)+'px';
+  loadingStage.style.top=((window.innerHeight-1080*s)/2)+'px';
+}
+}
+window.addEventListener('resize',layout);
+layout();
+
+function spawnEffect(cx,cy,intense){
+intense=intense||1;
+var flash=document.createElement('div');flash.className='flash';flash.style.left=cx+'px';flash.style.top=cy+'px';stage.appendChild(flash);setTimeout(function(){flash.remove()},550);
+var ripple=document.createElement('div');ripple.className='ripple';ripple.style.left=cx+'px';ripple.style.top=cy+'px';ripple.style.width=(70*intense)+'px';ripple.style.height=(70*intense)+'px';stage.appendChild(ripple);setTimeout(function(){ripple.remove()},700);
+var sw=document.createElement('div');sw.className='shockwave';sw.style.left=cx+'px';sw.style.top=cy+'px';sw.style.width='50px';sw.style.height='50px';stage.appendChild(sw);setTimeout(function(){sw.remove()},800);
+var colors=['#ffd700','#ffec8b','#ffa500','#fff4b0','#ff8c00','#ffe46a'];
+var count=Math.round(16*intense);
+for(var i=0;i<count;i++){
+var p=document.createElement('div');p.className='particle';p.style.left=cx+'px';p.style.top=cy+'px';p.style.background=colors[i%colors.length];p.style.boxShadow='0 0 10px '+colors[i%colors.length]+',0 0 20px rgba(255,170,0,.5)';stage.appendChild(p);
+var angle=(Math.PI*2*i)/count+Math.random()*0.4;var dist=(70+Math.random()*100)*intense;var dx=Math.cos(angle)*dist;var dy=Math.sin(angle)*dist;
+p.animate([{transform:'translate(-50%,-50%) scale(1)',opacity:1},{transform:'translate(calc(-50% + '+dx+'px), calc(-50% + '+dy+'px)) scale(0)',opacity:0}],{duration:650+Math.random()*350,easing:'cubic-bezier(.1,.8,.3,1)'});
+(function(el){setTimeout(function(){el.remove()},1000)})(p);
+}
+}
+
+function getStageXY(cx,cy){
+var rect=stage.getBoundingClientRect();
+var sx=2340/rect.width,sy=1080/rect.height;
+return {x:(cx-rect.left)*sx,y:(cy-rect.top)*sy};
+}
+
+var hotspots=document.querySelectorAll('.hotspot');
+hotspots.forEach(function(btn){
+btn.addEventListener('click',function(e){
+e.stopPropagation();
+var p=getStageXY(e.clientX,e.clientY);
+var name=btn.getAttribute('data-name');
+var intense=(name==='抽奖1次'||name==='抽奖10次')?1.4:1;
+spawnEffect(p.x,p.y,intense);
+});
+});
+
+stage.addEventListener('click',function(e){
+if(e.target.closest('.hotspot'))return;
+var p=getStageXY(e.clientX,e.clientY);
+spawnEffect(p.x,p.y,0.8);
+});
+})();
+
+// 显示购买抽奖币成功弹窗
+function showBuySuccess(count){
+  var iframe = document.getElementById('buySuccessIframe');
+  var rewardName = '火山币×' + count;
+  var modal = document.getElementById('buySuccessModal');
+  // 先隐藏弹窗
+  modal.classList.remove('show');
+  // 设置iframe的src
+  playRewardSound(); // 播放恭喜获得页面音效
+  iframe.src = 'pages/buy_success.html?t=' + Date.now();
+  // 加载完成后用postMessage传递奖励内容，然后显示弹窗
+  iframe.onload = function(){
+    iframe.contentWindow.postMessage({type: 'setBuyReward', name: rewardName, quality: 'gold', image: '../images/items_box/火山币/small.png'}, '*');
+    // 延迟一点显示弹窗，确保奖励已经渲染
+    setTimeout(function(){
+      modal.classList.add('show');
+    }, 100);
+  };
+}
+
+// 分解奖励弹窗（复用购买成功弹窗样式）
+function showDecomposeRewardNew(points){
+  var iframe = document.getElementById('buySuccessIframe');
+  var rewardName = '熔岩兑换币×' + points;
+  var modal = document.getElementById('buySuccessModal');
+  // 先隐藏弹窗
+  modal.classList.remove('show');
+  // 设置iframe的src
+  playRewardSound(); // 播放恭喜获得页面音效
+  iframe.src = 'pages/buy_success.html?t=' + Date.now();
+  // 加载完成后用postMessage传递奖励内容，然后显示弹窗
+  iframe.onload = function(){
+    iframe.contentWindow.postMessage({type: 'setBuyReward', name: rewardName, quality: 'purple', image: '../images/items_box/熔岩兑换币/small.png'}, '*');
+    // 延迟一点显示弹窗，确保奖励已经渲染
+    setTimeout(function(){
+      modal.classList.add('show');
+    }, 100);
+  };
+}
+// 发放仓库恭喜获得页面
+var pendingWarehouseItems = [];
+// 分批显示相关变量
+var warehouseAllItems = []; // 所有要发送的道具
+var warehouseCurrentBatch = 0; // 当前批次索引
+var warehouseTotalBatches = 0; // 总批次数
+var warehouseConfirmedItems = []; // 已确认的道具列表
+// 有出货动画的道具列表
+var SHOWCASE_ITEMS = [
+  // 紫电熔岩系列（7个）
+  'M4A1-雷霆王者-紫电熔岩',
+  'AK47-雷霆王者-紫电熔岩',
+  '巴雷特-雷霆王者-紫电熔岩',
+  'M12S-雷霆王者-紫电熔岩',
+  '王者之霆-紫电熔岩',
+  'COP357-雷霆王者-紫电熔岩',
+  '雷霆王者之锋-紫电熔岩',
+  // 燃竞之巅系列（7个）
+  'M4A1-雷霆王者-燃竞之巅',
+  'AK47-雷霆王者-燃竞之巅',
+  '巴雷特-雷霆王者-燃竞之巅',
+  'M12S-雷霆王者-燃竞之巅',
+  '王者之霆-燃竞之巅',
+  'COP357-雷霆王者-燃竞之巅',
+  '雷霆王者之锋-燃竞之巅',
+  // 基础版武器（4个）
+  'M4A1-雷霆王者',
+  'AK47-雷霆王者',
+  '巴雷特-雷霆王者',
+  '雷霆王者之锋'
+];
+// 兑换商城道具映射表（道具名称 -> 图片URL + 品质）
+const EXCHANGE_ITEMS_MAP = {
+// 紫电熔岩系列（7个）
+"m4a1_zidian": {"name": "M4A1-雷霆王者-紫电熔岩", "quality": "gold", "image": "images/items_box/M4A1-雷霆王者-紫电熔岩/showcase.png", "showcase": true},
+"ak47_zidian": {"name": "AK47-雷霆王者-紫电熔岩", "quality": "gold", "image": "images/items_box/AK47-雷霆王者-紫电熔岩/showcase.png", "showcase": true},
+"barrett_zidian": {"name": "巴雷特-雷霆王者-紫电熔岩", "quality": "gold", "image": "images/items_box/巴雷特-雷霆王者-紫电熔岩/showcase.png", "showcase": true},
+"m12s_zidian": {"name": "M12S-雷霆王者-紫电熔岩", "quality": "gold", "image": "images/items_box/M12S-雷霆王者-紫电熔岩/showcase.png", "showcase": true},
+"ting_zidian": {"name": "王者之霆-紫电熔岩", "quality": "gold", "image": "images/items_box/王者之霆-紫电熔岩/showcase.png", "showcase": true},
+"cop_zidian": {"name": "COP357-雷霆王者-紫电熔岩", "quality": "gold", "image": "images/items_box/COP357-雷霆王者-紫电熔岩/showcase.png", "showcase": true},
+"feng_zidian": {"name": "雷霆王者之锋-紫电熔岩", "quality": "gold", "image": "images/items_box/雷霆王者之锋-紫电熔岩/showcase.png", "showcase": true},
+// 燃竞之巅系列（7个）
+"m4a1_ranjing": {"name": "M4A1-雷霆王者-燃竞之巅", "quality": "gold", "image": "images/items_box/M4A1-雷霆王者-燃竞之巅/showcase.png", "showcase": true},
+"ak47_ranjing": {"name": "AK47-雷霆王者-燃竞之巅", "quality": "gold", "image": "images/items_box/AK47-雷霆王者-燃竞之巅/showcase.png", "showcase": true},
+"barrett_ranjing": {"name": "巴雷特-雷霆王者-燃竞之巅", "quality": "gold", "image": "images/items_box/巴雷特-雷霆王者-燃竞之巅/showcase.png", "showcase": true},
+"m12s_ranjing": {"name": "M12S-雷霆王者-燃竞之巅", "quality": "gold", "image": "images/items_box/M12S-雷霆王者-燃竞之巅/showcase.png", "showcase": true},
+"ting_ranjing": {"name": "王者之霆-燃竞之巅", "quality": "gold", "image": "images/items_box/王者之霆-燃竞之巅/showcase.png", "showcase": true},
+"cop_ranjing": {"name": "COP357-雷霆王者-燃竞之巅", "quality": "gold", "image": "images/items_box/COP357-雷霆王者-燃竞之巅/showcase.png", "showcase": true},
+"feng_ranjing": {"name": "雷霆王者之锋-燃竞之巅", "quality": "gold", "image": "images/items_box/雷霆王者之锋-燃竞之巅/showcase.png", "showcase": true},
+// 基础版武器（4个）
+"m4a1_base": {"name": "M4A1-雷霆王者", "quality": "gold", "image": "images/items_box/M4A1-雷霆王者/showcase.png", "showcase": true},
+"ak47_base": {"name": "AK47-雷霆王者", "quality": "gold", "image": "images/items_box/AK47-雷霆王者/showcase.png", "showcase": true},
+"barrett_base": {"name": "巴雷特-雷霆王者", "quality": "gold", "image": "images/items_box/巴雷特-雷霆王者/showcase.png", "showcase": true},
+"feng_base": {"name": "雷霆王者之锋", "quality": "gold", "image": "images/items_box/雷霆王者之锋/showcase.png", "showcase": true},
+// 紫电兑换币（没有出货动画）
+"zidian_coin": {"name": "紫电兑换币", "quality": "purple", "image": "images/items_box/紫电兑换币/small.png", "showcase": false}
+};
+// 根据道具名称或ID查找道具信息
+function findExchangeItem(product) {
+  // 先尝试用ID查找
+  if (EXCHANGE_ITEMS_MAP[product]) {
+    return EXCHANGE_ITEMS_MAP[product];
+  }
+  // 再尝试用名称查找
+  for (var key in EXCHANGE_ITEMS_MAP) {
+    if (EXCHANGE_ITEMS_MAP[key].name === product) {
+      return EXCHANGE_ITEMS_MAP[key];
+    }
+  }
+  return {image: '', quality: 'gold', name: product};
+}
+;
+
+// 当前兑换信息
+var currentExchangeProduct = '';
+var currentExchangePrice = 0;
+var currentExchangeQty = 1;
+
+// 判断道具是否需要出货动画
+function needShowcase(item){
+  return item && item.name && SHOWCASE_ITEMS.indexOf(item.name) !== -1;
+}
+function showSendToWarehouseReward(items){
+  warehouseAllItems = items || [];
+  if(warehouseAllItems.length === 0) return;
+  
+  // 重置分批显示状态
+  warehouseCurrentBatch = 0;
+  warehouseConfirmedItems = [];
+  
+  // 如果有任何道具数量>1，把所有道具都拆分成独立道具（每个都有自己的出货动画）
+  var needExpand = false;
+  for(var i = 0; i < warehouseAllItems.length; i++){
+    if(warehouseAllItems[i].count > 1){
+      needExpand = true;
+      break;
+    }
+  }
+  if(needExpand){
+    var expandedItems = [];
+    for(var i = 0; i < warehouseAllItems.length; i++){
+      var item = warehouseAllItems[i];
+      var count = item.count || 1;
+      for(var j = 0; j < count; j++){
+        expandedItems.push({
+          name: item.name,
+          quality: item.quality,
+          image: item.image,
+          showcase: item.showcase || false,
+          count: 1
+        });
+      }
+    }
+    warehouseAllItems = expandedItems;
+  }
+  
+  if(warehouseAllItems.length === 1){
+    // 只选了一个道具，用单抽模板（单抽模板已经有出货动画功能）
+    pendingWarehouseItems = warehouseAllItems.slice();
+    var item = pendingWarehouseItems[0];
+    var iframe = document.getElementById('buySuccessIframe');
+    var rewardName = item.name;
+    if(item.count > 1) rewardName = item.name + '×' + item.count;
+    var modal = document.getElementById('buySuccessModal');
+    modal.classList.remove('show');
+    playRewardSound(); // 播放恭喜获得页面音效
+  iframe.src = 'pages/buy_success.html?t=' + Date.now();
+    iframe.onload = function(){
+      var rewardImage = item.image;
+      if(rewardImage && rewardImage.indexOf('images/') === 0){
+        rewardImage = '../' + rewardImage;
+      }
+      iframe.contentWindow.postMessage({type: 'setBuyReward', name: rewardName, quality: item.quality || 'purple', image: rewardImage, showcase: item.showcase || false}, '*');
+      setTimeout(function(){
+        modal.classList.add('show');
+      }, 100);
+    };
+  }else{
+    // 超过1个道具，计算总批次数，分批显示
+    warehouseTotalBatches = Math.ceil(warehouseAllItems.length / 10);
+    showWarehouseBatch(0);
+  }
+}
+
+// 显示指定批次的道具
+function showWarehouseBatch(batchIndex){
+  // 计算当前批次的道具（最多10个）
+  var start = batchIndex * 10;
+  var end = Math.min(start + 10, warehouseAllItems.length);
+  pendingWarehouseItems = warehouseAllItems.slice(start, end);
+  
+  var multiIframe = document.getElementById('warehouseMultiIframe');
+  var multiModal = document.getElementById('warehouseMultiModal');
+  multiModal.classList.remove('show');
+  playRewardSound(); // 播放恭喜获得页面音效
+  multiIframe.src = 'pages/warehouse_multi.html?t=' + Date.now();
+  multiIframe.onload = function(){
+    // 延迟发送消息，确保子页面的message事件监听器已注册
+    setTimeout(function(){
+      // 修复图片路径：给相对路径添加../前缀
+      var fixedItems = pendingWarehouseItems.map(function(it){
+        if(it.image && it.image.indexOf('images/') === 0){
+          it.image = '../' + it.image;
+        }
+        return it;
+      });
+      multiIframe.contentWindow.postMessage({type: 'setWarehouseItems', items: fixedItems}, '*');
+    }, 200);
+    setTimeout(function(){
+      multiModal.classList.add('show');
+    }, 300);
+  };
+}
+// 发放仓库确认后，分批处理
+function confirmSendToWarehouse(){
+  // 把当前批次的道具加入已确认列表
+  var currentBatchItems = pendingWarehouseItems.slice();
+  warehouseConfirmedItems = warehouseConfirmedItems.concat(currentBatchItems);
+  
+  warehouseCurrentBatch++;
+  
+  // 如果还有下一批，显示下一批
+  if(warehouseCurrentBatch < warehouseTotalBatches){
+    // 关闭当前多道具显示页面，然后显示下一批
+    var multiModal = document.getElementById('warehouseMultiModal');
+    if(multiModal) multiModal.classList.remove('show');
+    var multiIframe = document.getElementById('warehouseMultiIframe');
+    if(multiIframe){
+      multiIframe.onload = null;
+      setTimeout(function(){
+        multiIframe.src = 'about:blank';
+        // 显示下一批
+        setTimeout(function(){
+          showWarehouseBatch(warehouseCurrentBatch);
+        }, 100);
+      }, 200);
+    }else{
+      showWarehouseBatch(warehouseCurrentBatch);
+    }
+    return;
+  }
+  
+  // 所有批次都确认完了，把所有已确认的道具加入仓库
+  var itemsToAdd = warehouseConfirmedItems.slice();
+  itemsToAdd.forEach(function(newItem){
+    // 熔岩兑换币和紫电兑换币不放入仓库（熔岩兑换币在addToStorage里已计数，紫电兑换币在addToStorage里已计数）
+    if(newItem.name && (newItem.name.indexOf('熔岩兑换币') !== -1 || newItem.name.indexOf('紫电兑换币') !== -1)){
+      return;
+    }
+    var existing = warehouseItems.find(function(x){ return x.name === newItem.name; });
+    if(existing){
+      existing.count = (existing.count || 1) + (newItem.count || 1);
+    }else{
+      warehouseItems.push(newItem);
+    }
+  });
+  
+  // 从暂存箱扣除道具（支持count>1的情况）
+  var itemsToDeduct = {};
+  itemsToAdd.forEach(function(item){
+    if(!itemsToDeduct[item.name]){
+      itemsToDeduct[item.name] = 0;
+    }
+    itemsToDeduct[item.name] += (item.count || 1);
+  });
+  
+  for(var deductName in itemsToDeduct){
+    var countToDeduct = itemsToDeduct[deductName];
+    for(var j = storageItems.length - 1; j >= 0; j--){
+      if(storageItems[j].name === deductName){
+        if(storageItems[j].count && storageItems[j].count > countToDeduct){
+          storageItems[j].count -= countToDeduct;
+        }else{
+          storageItems.splice(j, 1);
+        }
+        break;
+      }
+    }
+  }
+  
+  // 重置状态
+  pendingWarehouseItems = [];
+  warehouseAllItems = [];
+  warehouseCurrentBatch = 0;
+  warehouseTotalBatches = 0;
+  warehouseConfirmedItems = [];
+  
+  // 通知暂存箱页面更新
+  setTimeout(function(){
+    var storageIframe = document.getElementById('storageIframe');
+    if(storageIframe && storageIframe.contentWindow){
+      storageIframe.contentWindow.postMessage({type:'sendToWarehouseSuccess', items: storageItems}, '*');
+    }
+  }, 50);
+  
+  // 最后关闭多道具显示页面
+  setTimeout(function(){
+    var multiModal = document.getElementById('warehouseMultiModal');
+    if(multiModal) multiModal.classList.remove('show');
+    var multiIframe = document.getElementById('warehouseMultiIframe');
+    if(multiIframe){
+      multiIframe.onload = null;
+      setTimeout(function(){
+        multiIframe.src = 'about:blank';
+      }, 200);
+    }
+  }, 100);
+  
+  // 不关闭暂存箱，让用户可以继续操作
+}
+// 关闭购买抽奖币成功弹窗
+function closeBuySuccess(){
+  document.getElementById('buySuccessModal').classList.remove('show');
+  var iframe = document.getElementById('buySuccessIframe');
+  iframe.onload = null;
+  setTimeout(function(){
+    if(iframe) iframe.src = 'about:blank';
+  }, 300);
+  // 如果是单道具发放仓库，确认后把道具加入仓库、从暂存箱扣除并关闭
+  if(typeof pendingWarehouseItems !== 'undefined' && pendingWarehouseItems.length === 1){
+    var item = pendingWarehouseItems[0];
+    // 判断是否是紫电熔岩系列皮肤，如果是则显示获得编号页面
+    if(item.name && item.name.indexOf('紫电熔岩') !== -1){
+      // 显示获得编号页面
+      openZidianSerial(item);
+      // 把道具加入仓库
+      confirmSendToWarehouse();
+    }else{
+      confirmSendToWarehouse();
+    }
+  }
+}
+
+// 打开紫电熔岩获得编号页面
+function openZidianSerial(item){
+  var modal = document.getElementById('zidianSerialModal');
+  var iframe = document.getElementById('zidianSerialIframe');
+  modal.classList.remove('show');
+  // 播放打开音效
+  try{
+    var audio = new Audio('audio/gacha/open.m4a');
+    audio.volume = 0.5;
+    audio.play();
+  }catch(e){}
+  iframe.src = 'pages/zidian_serial.html?t=' + Date.now();
+  iframe.onload = function(){
+    // 准备道具图片路径
+    var itemImage = item.image;
+    if(itemImage && itemImage.indexOf('images/') === 0){
+      itemImage = '../' + itemImage;
+    }
+    // 如果没有图片，尝试从ITEM_MAPPING获取
+    if(!itemImage && window.ITEM_MAPPING && window.ITEM_MAPPING[item.name]){
+      itemImage = '../' + window.ITEM_MAPPING[item.name].image;
+    }
+    iframe.contentWindow.postMessage({
+      type: 'setZidianSerial',
+      item: item,
+      image: itemImage
+    }, '*');
+    setTimeout(function(){
+      modal.classList.add('show');
+    }, 100);
+  };
+  // 超时兜底显示
+  setTimeout(function(){
+    if(!modal.classList.contains('show')){
+      modal.classList.add('show');
+    }
+  }, 500);
+}
+
+// 关闭紫电熔岩获得编号页面
+function closeZidianSerial(){
+  var modal = document.getElementById('zidianSerialModal');
+  var iframe = document.getElementById('zidianSerialIframe');
+  modal.classList.remove('show');
+  iframe.onload = null;
+  setTimeout(function(){
+    if(iframe) iframe.src = 'about:blank';
+  }, 300);
+}
+</script>
+
+<div class="exchange-modal" id="exchangeModal">
+  <div class="exchange-box">
+    <iframe id="exchangeIframe" src="pages/exchange.html" allowfullscreen></iframe></iframe>
+  </div>
+</div>
+<script>
+document.addEventListener('DOMContentLoaded', function(){
+  updateGachaCoinDisplay();
+  updateCfmCoinDisplay();
+  updatePointsDisplay();
+  updateZidianPointsDisplay();
+  // 初始化数量选择弹窗
+  bindNumSelect();
+  // 全屏按钮
+  document.getElementById('fsBtn').addEventListener('click', function(){
+    // 确保BGM播放（用户手势触发，不会被浏览器阻止）
+    if(typeof startBGM === 'function') startBGM();
+    if(!document.fullscreenElement && !document.webkitFullscreenElement){
+      var el = document.documentElement;
+      if(el.requestFullscreen){
+        el.requestFullscreen().then(function(){
+          // 全屏成功后尝试锁定横屏方向
+          try{
+            if(screen.orientation && screen.orientation.lock){
+              screen.orientation.lock('landscape').catch(function(){});
+            }
+          }catch(e){}
+        }).catch(function(){});
+      }
+      else if(el.webkitRequestFullscreen) el.webkitRequestFullscreen();
+    }else{
+      if(document.exitFullscreen) document.exitFullscreen();
+      else if(document.webkitExitFullscreen) document.webkitExitFullscreen();
+      // 退出全屏时解锁方向
+      try{
+        if(screen.orientation && screen.orientation.unlock){
+          screen.orientation.unlock();
+        }
+      }catch(e){}
+    }
+  });
+  // 监听全屏状态变化，切换body类名
+  function updateFullscreenClass(){
+    if(document.fullscreenElement || document.webkitFullscreenElement){
+      document.body.classList.add('is-fullscreen');
+    } else {
+      document.body.classList.remove('is-fullscreen');
+    }
+  }
+  document.addEventListener('fullscreenchange', updateFullscreenClass);
+  document.addEventListener('webkitfullscreenchange', updateFullscreenClass);
+  var btn = document.querySelector('.hotspot[data-name="兑换"]');
+  if(btn){
+    btn.addEventListener('click', function(){
+      playOpenSound(); // 播放打开音效
+      document.getElementById('exchangeModal').classList.add('active');
+    });
+  }
+  document.getElementById('exchangeModal').addEventListener('click', function(e){
+    if(e.target === this){
+      playBackSound(); // 播放返回音效
+      this.classList.remove('active');
+    }
+  });
+  var iframe = document.getElementById('exchangeIframe');
+  iframe.addEventListener('load', function(){
+    try{
+      var doc = iframe.contentDocument || iframe.contentWindow.document;
+      var backBtn = doc.querySelector('.hotspot[data-action="back"]');
+      if(backBtn){
+        backBtn.addEventListener('click', function(){
+          document.getElementById('exchangeModal').classList.remove('active');
+        });
+      }
+    }catch(err){}
+  });
+  
+});
+</script>
+
+<div class="gacha-single-modal" id="gachaSingleModal">
+  <div class="gacha-single-box">
+    <iframe id="gachaSingleIframe" allowfullscreen></iframe>
+  </div>
+</div>
+<div class="gacha-ten-modal" id="gachaTenModal">
+  <div class="gacha-ten-box">
+    <iframe id="gachaTenIframe" allowfullscreen></iframe>
+    
+  </div>
+</div>
+
+
+<textarea class="gacha-tpl" id="gachaSingleTpl"><!DOCTYPE html>
+<html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{width:100%;height:100%;overflow:hidden;background:#000}
+.gacha-bg{width:100%;height:100%;object-fit:fill;display:block;position:absolute;top:0;left:0;z-index:1;pointer-events:none}
+.gacha-confirm{position:absolute;left:40%;top:80%;width:20%;height:12%;background:transparent;border:none;cursor:pointer;z-index:100}
+
+</style>  <script src="data/gacha_base.js"></script>
+  <script src="data/config.js"></script>
+  <script src="data/item_box_config.js"></script>
+  <script src="data/buy_tiers.js"></script>
+  <script src="data/exchange_data.js"></script>
+  <script src="data/decompose_points.js"></script>
+</head><body>
+<img class="gacha-bg" src="">
+<button class="gacha-confirm" id="gachaSingleConfirm"></button>
+<script>
+document.getElementById('gachaSingleConfirm').addEventListener('click', function(){
+  parent.postMessage('closeGachaSingle', '*');
+});
+</script>
+
+
+<script>
+// 禁止长按弹出菜单
+document.addEventListener('contextmenu', function(e){
+  e.preventDefault();
+  return false;
+});
+// 禁止图片拖拽
+document.addEventListener('dragstart', function(e){
+  if(e.target.tagName === 'IMG'){
+    e.preventDefault();
+    return false;
+  }
+});
+</script>
+</body></html></textarea>
+<textarea class="gacha-tpl" id="gachaTenTpl"><!DOCTYPE html>
+<html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{width:100%;height:100%;overflow:hidden;background:#000}
+.gacha-bg{width:100%;height:100%;object-fit:fill;display:block;position:absolute;top:0;left:0;z-index:1;pointer-events:none}
+.gacha-confirm{position:absolute;left:40%;top:80%;width:20%;height:12%;background:transparent;border:none;cursor:pointer;z-index:100}
+
+</style>  <script src="data/gacha_base.js"></script>
+  <script src="data/config.js"></script>
+  <script src="data/item_box_config.js"></script>
+  <script src="data/buy_tiers.js"></script>
+  <script src="data/exchange_data.js"></script>
+  <script src="data/decompose_points.js"></script>
+</head><body>
+<img class="gacha-bg" src="">
+<button class="gacha-confirm" id="gachaTenConfirm"></button>
+<script>
+document.getElementById('gachaTenConfirm').addEventListener('click', function(){
+  parent.postMessage('closeGachaTen', '*');
+});
+</script>
+
+</body></html></textarea>
+<script>
+// 抽奖动画状态锁，防止快速点击导致黑屏
+var isGachaAnimating = false;
+var gachaOpenTimeout = null;
+var gachaTenOpenTimeout = null;
+var gachaCloseTimeout = null;
+var gachaTenCloseTimeout = null;
+var currentGachaType = null; // 当前抽奖类型：single / ten
+
+var gachaSingleTpl = document.getElementById('gachaSingleTpl').value;
+var gachaTenTpl = document.getElementById('gachaTenTpl').value;
+
+function openGachaSingle(){
+  // 状态锁：动画进行中或额外加赠/神话加赠进行中忽略点击
+  if(isGachaAnimating || isBonusActive || isMythicActive) return;
+  // 如果上一次关闭还在进行中，立即清除，允许快速重新打开
+  if(gachaCloseTimeout){
+    clearTimeout(gachaCloseTimeout);
+    gachaCloseTimeout = null;
+  }
+  if(gachaCoinCount < 1){
+    openShop();
+    return;
+  }
+  isGachaAnimating = true;
+  currentGachaType = 'single';
+  gachaCoinCount -= 1;
+  updateGachaCoinDisplay();
+  totalDrawCount += 1;
+  updateTotalDrawCount();
+  playRewardSound(); // 播放恭喜获得页面音效（在主页面中播放，不受iframe自动播放策略限制）
+  var iframe = document.getElementById('gachaSingleIframe');
+  iframe.onload = function(){
+    if(isGachaAnimating){
+      document.getElementById('gachaSingleModal').className = 'gacha-single-modal gacha-show';
+    }
+  };
+  iframe.src = 'pages/gacha_single.html?pool=' + currentPool + '&t=' + Date.now();
+  // 保存timeout引用，关闭时清除
+  gachaOpenTimeout = setTimeout(function(){
+    if(isGachaAnimating && !document.getElementById('gachaSingleModal').classList.contains('gacha-show')){
+      document.getElementById('gachaSingleModal').className = 'gacha-single-modal gacha-show';
+    }
+  }, 500);
+}
+function closeGachaSingle(){
+  // 防止重复关闭
+  if(!isGachaAnimating) return;
+  // 立即释放状态锁，让用户可以立即再次点击抽奖
+  isGachaAnimating = false;
+  // 清除未完成的打开timeout
+  if(gachaOpenTimeout){
+    clearTimeout(gachaOpenTimeout);
+    gachaOpenTimeout = null;
+  }
+  var iframe = document.getElementById('gachaSingleIframe');
+  iframe.onload = null;
+  // 先隐藏modal（淡出动画）
+  document.getElementById('gachaSingleModal').className = 'gacha-single-modal';
+  // 延迟300ms等淡出动画完成后再清空iframe，避免黑屏
+  gachaCloseTimeout = setTimeout(function(){
+    iframe.src = 'about:blank';
+    gachaCloseTimeout = null;
+  }, 300);
+  currentGachaType = null;
+  
+  // 检查是否满足额外加赠条件（每满十次，包括单抽）
+  checkBonusEligibility();
+}
+
+function openGachaTen(){
+  // 状态锁：动画进行中或额外加赠/神话加赠进行中忽略点击
+  if(isGachaAnimating || isBonusActive || isMythicActive) return;
+  // 如果上一次关闭还在进行中，立即清除，允许快速重新打开
+  if(gachaTenCloseTimeout){
+    clearTimeout(gachaTenCloseTimeout);
+    gachaTenCloseTimeout = null;
+  }
+  if(gachaCoinCount < 10){
+    openShop();
+    return;
+  }
+  isGachaAnimating = true;
+  currentGachaType = 'ten';
+  gachaCoinCount -= 10;
+  updateGachaCoinDisplay();
+  totalDrawCount += 10;
+  updateTotalDrawCount();
+  playRewardSound(); // 播放恭喜获得页面音效（在主页面中播放，不受iframe自动播放策略限制）
+  var iframe = document.getElementById('gachaTenIframe');
+  iframe.onload = function(){
+    if(isGachaAnimating){
+      document.getElementById('gachaTenModal').className = 'gacha-ten-modal gacha-show';
+    }
+  };
+  iframe.src = 'pages/gacha_ten.html?pool=' + currentPool + '&t=' + Date.now();
+  // 保存timeout引用，关闭时清除
+  gachaTenOpenTimeout = setTimeout(function(){
+    if(isGachaAnimating && !document.getElementById('gachaTenModal').classList.contains('gacha-show')){
+      document.getElementById('gachaTenModal').className = 'gacha-ten-modal gacha-show';
+    }
+  }, 500);
+}
+function openReward(){
+  playOpenSound(); // 播放打开音效
+  var iframe = document.getElementById('rewardIframe');
+  // 获取当前奖池ID
+  var currentPoolId = (typeof currentPool !== 'undefined') ? currentPool : (window.CURRENT_POOL || 'm4');
+  iframe.onload = function(){
+    document.getElementById('rewardModal').className = 'reward-modal show';
+  };
+  iframe.src = 'pages/reward_list.html?t=' + Date.now() + '&pool=' + currentPoolId;
+  setTimeout(function(){
+    if(!document.getElementById('rewardModal').classList.contains('show')){
+      document.getElementById('rewardModal').className = 'reward-modal show';
+    }
+  }, 500);
+}
+function closeReward(){
+  playBackSound(); // 播放返回音效
+  var iframe = document.getElementById('rewardIframe');
+  iframe.onload = null;
+  document.getElementById('rewardModal').className = 'reward-modal';
+  setTimeout(function(){
+    iframe.src = 'about:blank';
+  }, 300);
+}
+function openWarehouse(){
+  playWarehouseOpenSound(); // 播放仓库打开音效
+  restartBGM(); // 进入仓库，背景音乐重新进入循环
+  var iframe = document.getElementById('warehouseIframe');
+  iframe.onload = function(){
+    document.getElementById('warehouseModal').className = 'warehouse-modal show';
+    iframe.contentWindow.postMessage({type:'warehouseData', items: warehouseItems}, '*');
+  };
+  iframe.src = 'pages/warehouse.html?t=' + Date.now();
+  setTimeout(function(){
+    if(!document.getElementById('warehouseModal').classList.contains('show')){
+      document.getElementById('warehouseModal').className = 'warehouse-modal show';
+    }
+  }, 500);
+}
+function closeWarehouse(){
+  playBackSound(); // 播放返回音效
+  restartBGM(); // 退出仓库，背景音乐重新进入循环
+  var iframe = document.getElementById('warehouseIframe');
+  iframe.onload = null;
+  document.getElementById('warehouseModal').className = 'warehouse-modal';
+  setTimeout(function(){
+    iframe.src = 'about:blank';
+  }, 300);
+}
+function openStorage(){
+  playOpenSound(); // 播放打开音效
+  var iframe = document.getElementById('storageIframe');
+  iframe.onload = function(){
+    document.getElementById('storageModal').className = 'storage-modal show';
+  };
+  iframe.src = 'pages/storage.html?t=' + Date.now();
+  setTimeout(function(){
+    if(!document.getElementById('storageModal').classList.contains('show')){
+      document.getElementById('storageModal').className = 'storage-modal show';
+    }
+  }, 500);
+}
+function closeStorage(){
+  playStorageBackSound(); // 播放暂存箱返回键音效（暂存箱专用，和其他页面不一样）
+  var iframe = document.getElementById('storageIframe');
+  iframe.onload = null;
+  document.getElementById('storageModal').className = 'storage-modal';
+  setTimeout(function(){
+    iframe.src = 'about:blank';
+  }, 300);
+}
+
+// ========== 奖池选择 ==========
+// 分解奖励弹窗
+function showDecomposeReward(points){
+  var iframe = document.getElementById('decomposeRewardIframe');
+  iframe.onload = function(){
+    document.getElementById('decomposeRewardModal').className = 'decompose-reward-modal show';
+  };
+  playRewardSound(); // 播放恭喜获得页面音效
+  iframe.src = 'pages/decompose_reward.html?points=' + points + '&t=' + Date.now();
+  setTimeout(function(){
+    if(!document.getElementById('decomposeRewardModal').classList.contains('show')){
+      document.getElementById('decomposeRewardModal').className = 'decompose-reward-modal show';
+    }
+  }, 500);
+}
+function closeDecomposeReward(){
+  var iframe = document.getElementById('decomposeRewardIframe');
+  iframe.onload = null;
+  document.getElementById('decomposeRewardModal').className = 'decompose-reward-modal';
+  setTimeout(function(){
+    iframe.src = 'about:blank';
+  }, 300);
+}
+function addToStorage(item){
+  // 熔岩夺宝：没有暂存箱，抽到的道具直接发送到仓库
+  // 熔岩兑换币不放入仓库，直接计数（唯一计数点，避免重复）
+  if(item.name && item.name.indexOf('熔岩兑换币') !== -1){
+    var num = 1;
+    var match = item.name.match(/×(\d+)/);
+    if(match) num = parseInt(match[1]);
+    pointsCount += num;
+    updatePointsDisplay();
+    return;
+  }
+  // 紫电兑换币不放入仓库，直接计数（首页增加，同时通知兑换商城同步）
+  if(item.name && item.name.indexOf('紫电兑换币') !== -1){
+    var znum = 1;
+    var zmatch = item.name.match(/×(\d+)/);
+    if(zmatch) znum = parseInt(zmatch[1]);
+    zidianPointsCount += znum;
+    updateZidianPointsDisplay();
+    // 通知兑换商城同步
+    var exchangeIframe = document.getElementById('exchangeIframe');
+    if(exchangeIframe && exchangeIframe.contentWindow){
+      exchangeIframe.contentWindow.postMessage({type:'updateZidianPoints', points: zidianPointsCount}, '*');
+    }
+    return;
+  }
+  // 其他道具直接发送到仓库
+  if(window.ITEM_MAPPING && window.ITEM_MAPPING[item.name]){
+    item.image = '../' + window.ITEM_MAPPING[item.name].image;
+    item.quality = window.ITEM_MAPPING[item.name].quality;
+  }
+  var existing = warehouseItems.find(function(x){ return x.name === item.name; });
+  if(existing){
+    existing.count = (existing.count || 1) + 1;
+  }else{
+    warehouseItems.push({
+      name: item.name,
+      quality: item.quality,
+      image: item.image,
+      weight: item.weight,
+      count: 1
+    });
+  }
+}
+function closeGachaTen(){
+  // 防止重复关闭
+  if(!isGachaAnimating) return;
+  // 立即释放状态锁，让用户可以立即再次点击抽奖
+  isGachaAnimating = false;
+  // 清除未完成的打开timeout
+  if(gachaTenOpenTimeout){
+    clearTimeout(gachaTenOpenTimeout);
+    gachaTenOpenTimeout = null;
+  }
+  var iframe = document.getElementById('gachaTenIframe');
+  iframe.onload = null;
+  // 先隐藏modal（淡出动画）
+  document.getElementById('gachaTenModal').className = 'gacha-ten-modal';
+  // 延迟300ms等淡出动画完成后再清空iframe，避免黑屏
+  gachaTenCloseTimeout = setTimeout(function(){
+    iframe.src = 'about:blank';
+    gachaTenCloseTimeout = null;
+  }, 300);
+  currentGachaType = null;
+  
+  // 检查是否满足额外加赠条件（每满十次）
+  checkBonusEligibility();
+}
+
+// ========== 额外加赠逻辑 ==========
+// 熔岩夺宝：禁用额外加赠（保留代码，不触发）
+var enableBonus = false;
+
+// 检查是否满足额外加赠条件（每满十次，包括单抽和十连抽）
+function checkBonusEligibility(){
+  // 熔岩夺宝：禁用额外加赠
+  if(!enableBonus) return;
+  // 检查从上一次触发到现在，是否跨过了任何10的倍数
+  var lastMultiple = Math.floor(lastBonusDrawCount / 10) * 10; // 上一次触发时或之前的最近10的倍数
+  var currentMultiple = Math.floor(totalDrawCount / 10) * 10; // 当前次数或之前的最近10的倍数
+  if(currentMultiple > lastMultiple && currentMultiple > 0){
+    bonusPending = true;
+    lastBonusDrawCount = currentMultiple; // 更新上一次触发额外加赠的次数为最近的10的倍数
+    // 特殊奖池二选一：A池和B池各抽一个
+    bonusRewardA = drawFromPool(BONUS_POOL_A);
+    bonusRewardB = drawFromPool(BONUS_POOL_B);
+    // 立刻显示额外加赠提示页面（特殊奖池二选一）
+    openBonusTip();
+  }
+}
+
+// 进行概率抽奖，获得额外加赠的奖励
+function drawBonusReward(){
+  var totalWeight = 0;
+  for(var i = 0; i < BONUS_ITEM_POOL.length; i++){
+    totalWeight += BONUS_ITEM_POOL[i].weight;
+  }
+  var random = Math.random() * totalWeight;
+  var cumulative = 0;
+  for(var i = 0; i < BONUS_ITEM_POOL.length; i++){
+    cumulative += BONUS_ITEM_POOL[i].weight;
+    if(random < cumulative){
+      return BONUS_ITEM_POOL[i];
+    }
+  }
+  return BONUS_ITEM_POOL[BONUS_ITEM_POOL.length - 1];
+}
+
+// 打开额外加赠提示页面（特殊奖池二选一）
+function openBonusTip(){
+  isBonusActive = true; // 设置状态锁，防止用户进行其他操作
+  var iframe = document.getElementById('bonusTipIframe');
+  var modal = document.getElementById('bonusTipModal');
+  modal.classList.remove('show');
+  iframe.src = 'pages/bonus_tip.html?t=' + Date.now();
+  iframe.onload = function(){
+    // 把A池和B池的奖励信息传递给bonus_tip.html页面
+    try{
+      iframe.contentWindow.postMessage({
+        type: 'setSpecialRewards',
+        rewardA: bonusRewardA,
+        rewardB: bonusRewardB,
+        itemMapping: window.ITEM_MAPPING
+      }, '*');
+    }catch(e){}
+    setTimeout(function(){
+      modal.classList.add('show');
+    }, 100);
+  };
+}
+
+// 关闭额外加赠提示页面，使用玩家选择的奖励，显示奖励展示页面
+function closeBonusTip(selectedReward){
+  var iframe = document.getElementById('bonusTipIframe');
+  var modal = document.getElementById('bonusTipModal');
+  modal.classList.remove('show');
+  iframe.onload = null;
+  iframe.src = 'about:blank';
+  // 使用玩家选择的奖励，并添加image和quality字段
+  bonusCurrentReward = selectedReward;
+  if(bonusCurrentReward && window.ITEM_MAPPING && window.ITEM_MAPPING[bonusCurrentReward.name]){
+    bonusCurrentReward.image = '../' + window.ITEM_MAPPING[bonusCurrentReward.name].image;
+    bonusCurrentReward.quality = window.ITEM_MAPPING[bonusCurrentReward.name].quality;
+  }
+  
+  // 判断是否需要出货动画（跟单抽出有出货动画的道具一样的逻辑）
+  if(needShowcase(bonusCurrentReward)){
+    // 需要出货动画，构造item对象，调用showSendToWarehouseReward函数
+    var item = {
+      name: bonusCurrentReward.name,
+      quality: bonusCurrentReward.quality || 'gold',
+      image: bonusCurrentReward.image,
+      showcase: true,
+      count: 1
+    };
+    // 重置特殊奖池状态
+    bonusPending = false;
+    isBonusActive = false;
+    bonusCurrentReward = null;
+    // 调用showSendToWarehouseReward函数，显示出货动画（跟单抽出有出货动画的道具一样的逻辑）
+    showSendToWarehouseReward([item]);
+    // 检查是否满足神话加赠条件
+    checkMythicEligibility();
+  }else{
+    // 不需要出货动画，继续使用原来的逻辑
+    openBonusReward();
+  }
+}
+
+// 打开额外加赠奖励展示页面
+function openBonusReward(){
+  var iframe = document.getElementById('bonusRewardIframe');
+  var modal = document.getElementById('bonusRewardModal');
+  modal.classList.remove('show');
+  playRewardSound(); // 播放恭喜获得页面音效（在主页面中播放，不受iframe自动播放策略限制）
+  iframe.src = 'pages/bonus_reward.html?t=' + Date.now();
+  iframe.onload = function(){
+    try{
+      iframe.contentWindow.postMessage({type: 'setBonusReward', item: bonusCurrentReward}, '*');
+    }catch(e){}
+    setTimeout(function(){
+      modal.classList.add('show');
+    }, 100);
+  };
+}
+
+// 关闭额外加赠奖励展示页面，将奖励添加到暂存箱
+function closeBonusReward(){
+  var iframe = document.getElementById('bonusRewardIframe');
+  var modal = document.getElementById('bonusRewardModal');
+  modal.classList.remove('show');
+  iframe.onload = null;
+  setTimeout(function(){
+    iframe.src = 'about:blank';
+    // 处理奖励
+    if(bonusCurrentReward){
+      var item = bonusCurrentReward;
+      // 如果是熔岩兑换币，增加兑换币数量
+      if(item.name && item.name.indexOf('熔岩兑换币') !== -1){
+        // 从名称中提取数字，如"熔岩兑换币×12" -> 12
+        var numStr = item.name.replace('熔岩兑换币×', '').replace('熔岩兑换币*', '').replace('熔岩兑换币', '');
+        var num = parseInt(numStr);
+        if(!isNaN(num)){
+          pointsCount += num;
+          updatePointsDisplay();
+        }
+      }else if(item.name && item.name.indexOf('紫电兑换币') !== -1){
+        // 紫电兑换币，增加紫电兑换币数量
+        var znumStr = item.name.replace('紫电兑换币×', '').replace('紫电兑换币*', '').replace('紫电兑换币', '');
+        var znum = parseInt(znumStr);
+        if(!isNaN(znum)){
+          zidianPointsCount += znum;
+          updateZidianPointsDisplay();
+        }
+      }else{
+        // 其他道具直接发送到仓库
+        if(window.ITEM_MAPPING && window.ITEM_MAPPING[item.name]){
+          item.image = '../' + window.ITEM_MAPPING[item.name].image;
+          item.quality = window.ITEM_MAPPING[item.name].quality;
+        }
+        var existing = warehouseItems.find(function(x){ return x.name === item.name; });
+        if(existing){
+          existing.count = (existing.count || 1) + (item.count || 1);
+        }else{
+          warehouseItems.push(item);
+        }
+      }
+      bonusCurrentReward = null;
+    }
+    bonusPending = false;
+    isBonusActive = false; // 释放状态锁，允许用户进行其他操作
+    
+    // 额外加赠完成后，检查是否满足神话加赠条件（每满50次）
+    checkMythicEligibility();
+  }, 300);
+}
+
+// ========== 神话加赠逻辑 ==========
+// 检查是否满足神话加赠条件（每满50次）
+function checkMythicEligibility(){
+  // 熔岩夺宝：禁用神话加赠
+  if(!enableMythicBonus) return;
+  // 检查从上一次触发到现在，是否跨过了任何50的倍数
+  var lastMultiple = Math.floor(lastMythicDrawCount / 50) * 50;
+  var currentMultiple = Math.floor(totalDrawCount / 50) * 50;
+  if(currentMultiple > lastMultiple && currentMultiple > 0){
+    mythicPending = true;
+    lastMythicDrawCount = currentMultiple;
+    // 立刻显示神话加赠提示页面
+    openMythicTip();
+  }
+}
+
+// 进行概率抽奖，获得神话加赠的奖励
+function drawMythicReward(){
+  var totalWeight = 0;
+  for(var i = 0; i < MYTHIC_ITEM_POOL.length; i++){
+    totalWeight += MYTHIC_ITEM_POOL[i].weight;
+  }
+  var random = Math.random() * totalWeight;
+  var cumulative = 0;
+  for(var i = 0; i < MYTHIC_ITEM_POOL.length; i++){
+    cumulative += MYTHIC_ITEM_POOL[i].weight;
+    if(random < cumulative){
+      return MYTHIC_ITEM_POOL[i];
+    }
+  }
+  return MYTHIC_ITEM_POOL[MYTHIC_ITEM_POOL.length - 1];
+}
+
+// 打开神话加赠提示页面
+function openMythicTip(){
+  isMythicActive = true; // 设置状态锁
+  var iframe = document.getElementById('mythicTipIframe');
+  var modal = document.getElementById('mythicTipModal');
+  modal.classList.remove('show');
+  iframe.src = 'pages/myth_tip.html?t=' + Date.now();
+  iframe.onload = function(){
+    setTimeout(function(){
+      modal.classList.add('show');
+    }, 100);
+  };
+}
+
+// 关闭神话加赠提示页面，然后进行概率抽奖，显示奖励展示页面
+function closeMythicTip(){
+  var iframe = document.getElementById('mythicTipIframe');
+  var modal = document.getElementById('mythicTipModal');
+  modal.classList.remove('show');
+  iframe.onload = null;
+  iframe.src = 'about:blank';
+  // 进行概率抽奖，获得神话加赠的奖励
+  mythicCurrentReward = drawMythicReward();
+  // 立刻显示神话加赠奖励展示页面
+  openMythicReward();
+}
+
+// 打开神话加赠奖励展示页面
+function openMythicReward(){
+  var iframe = document.getElementById('mythicRewardIframe');
+  var modal = document.getElementById('mythicRewardModal');
+  modal.classList.remove('show');
+  iframe.src = 'pages/myth_reward.html?t=' + Date.now();
+  iframe.onload = function(){
+    try{
+      iframe.contentWindow.postMessage({type: 'setMythicReward', item: mythicCurrentReward}, '*');
+    }catch(e){}
+    setTimeout(function(){
+      modal.classList.add('show');
+    }, 100);
+  };
+}
+
+// 关闭神话加赠奖励展示页面，将奖励添加到暂存箱或增加兑换币数量
+function closeMythicReward(){
+  var iframe = document.getElementById('mythicRewardIframe');
+  var modal = document.getElementById('mythicRewardModal');
+  modal.classList.remove('show');
+  iframe.onload = null;
+  setTimeout(function(){
+    iframe.src = 'about:blank';
+    // 处理奖励
+    if(mythicCurrentReward){
+      var item = mythicCurrentReward;
+      // 如果是熔岩兑换币，增加兑换币数量
+      if(item.name && item.name.indexOf('熔岩兑换币') !== -1){
+        var numStr = item.name.replace('熔岩兑换币×', '').replace('熔岩兑换币*', '').replace('熔岩兑换币', '');
+        var num = parseInt(numStr);
+        if(!isNaN(num)){
+          pointsCount += num;
+          updatePointsDisplay();
+        }
+      }else if(item.name && item.name.indexOf('紫电兑换币') !== -1){
+        // 紫电兑换币，增加紫电兑换币数量
+        var znumStr2 = item.name.replace('紫电兑换币×', '').replace('紫电兑换币*', '').replace('紫电兑换币', '');
+        var znum3 = parseInt(znumStr2);
+        if(!isNaN(znum3)){
+          zidianPointsCount += znum3;
+          updateZidianPointsDisplay();
+        }
+      }else{
+        // 其他道具直接发送到仓库
+        if(window.ITEM_MAPPING && window.ITEM_MAPPING[item.name]){
+          item.image = '../' + window.ITEM_MAPPING[item.name].image;
+          item.quality = window.ITEM_MAPPING[item.name].quality;
+        }
+        var existing = warehouseItems.find(function(x){ return x.name === item.name; });
+        if(existing){
+          existing.count = (existing.count || 1) + (item.count || 1);
+        }else{
+          warehouseItems.push(item);
+        }
+      }
+      mythicCurrentReward = null;
+    }
+    mythicPending = false;
+    isMythicActive = false; // 释放状态锁
+  }, 300);
+}
+
+window.addEventListener('message', function(e){
+  if(e.data && e.data.type === 'gachaClose'){
+    // 把获得的奖励存入暂存箱（熔岩兑换币计数在confirmSendToWarehouse里统一处理，避免重复）
+    if(e.data.rewards && e.data.rewards.length > 0){
+      for(var i = 0; i < e.data.rewards.length; i++){
+        addToStorage(e.data.rewards[i]);
+      }
+    }
+  }
+  if(e.data && e.data.type === 'closeReward') closeReward();
+  if(e.data && e.data.type === 'closeStorage') closeStorage();
+  if(e.data && e.data.type === 'closeWarehouse') closeWarehouse();
+  if(e.data && e.data.type === 'warehouseMultiConfirm'){ confirmSendToWarehouse(); }
+  if(e.data && e.data.type === 'requestWarehouseItems'){
+    var multiIframe = document.getElementById('warehouseMultiIframe');
+    if(multiIframe && multiIframe.contentWindow){
+      multiIframe.contentWindow.postMessage({type:'setWarehouseItems', items: pendingWarehouseItems}, '*');
+    }
+  }
+  if(e.data && e.data.type === 'sendToWarehouse'){
+    var itemsToSend = e.data.items || [];
+    // 显示发放仓库恭喜获得页面
+    showSendToWarehouseReward(itemsToSend);
+  }
+  if(e.data && e.data.type === 'closeDecomposeReward') closeDecomposeReward();
+  if(e.data && e.data.type === 'bonusTipConfirm') closeBonusTip(e.data.selectedReward);
+  if(e.data && e.data.type === 'bonusRewardConfirm') closeBonusReward();
+  if(e.data && e.data.type === 'mythicTipConfirm') closeMythicTip();
+  if(e.data && e.data.type === 'mythicRewardConfirm') closeMythicReward();
+  if(e.data && e.data.type === 'requestPoints'){
+    var storageIframe = document.getElementById('storageIframe');
+    if(storageIframe && storageIframe.contentWindow){
+      storageIframe.contentWindow.postMessage({type:'updatePoints', points: pointsCount}, '*');
+    }
+    var exchangeIframe = document.getElementById('exchangeIframe');
+    if(exchangeIframe && exchangeIframe.contentWindow){
+      exchangeIframe.contentWindow.postMessage({type:'updatePoints', points: pointsCount}, '*');
+    }
+  }
+  if(e.data && e.data.type === 'requestZidianPoints'){
+    var exchangeIframe = document.getElementById('exchangeIframe');
+    if(exchangeIframe && exchangeIframe.contentWindow){
+      exchangeIframe.contentWindow.postMessage({type:'updateZidianPoints', points: zidianPointsCount}, '*');
+    }
+  }
+  // 兑换商城同步紫电兑换币计数（以兑换商城为准）
+  if(e.data && e.data.type === 'syncZidianPoints'){
+    zidianPointsCount = e.data.points || 0;
+    updateZidianPointsDisplay();
+  }
+  if(e.data && e.data.type === 'requestStorageData'){
+    var storageIframe = document.getElementById('storageIframe');
+    if(storageIframe && storageIframe.contentWindow){
+      storageIframe.contentWindow.postMessage({type:'storageData', items: storageItems, points: pointsCount}, '*');
+    }
+  }
+  if(e.data && e.data.type === 'decomposeItems'){
+    var points = e.data.points || 0;
+    var items = e.data.items || [];
+    // 加到首页积分
+    if(points > 0){
+      pointsCount += points;
+      updatePointsDisplay();
+    }
+    // 从暂存箱中删除已分解的道具
+    for(var i = 0; i < items.length; i++){
+      for(var j = storageItems.length - 1; j >= 0; j--){
+        if(storageItems[j].name === items[i].name){
+          storageItems.splice(j, 1);
+          break;
+        }
+      }
+    }
+    // 显示恭喜获得页面（复用购买成功弹窗样式）
+    if(points > 0){
+      showDecomposeRewardNew(points);
+    }
+    // 重新发送数据给暂存箱页面
+    var storageIframe = document.getElementById('storageIframe');
+    if(storageIframe && storageIframe.contentWindow){
+      storageIframe.contentWindow.postMessage({type:'decomposeSuccess', items: storageItems, points: pointsCount}, '*');
+    }
+  }
+  if(e.data === 'closeGachaSingle'){
+    closeGachaSingle();
+  }else if(e.data === 'closeGachaTen'){
+    closeGachaTen();
+  }else if(e.data && e.data.type === 'gachaClose'){
+    // 根据当前抽奖类型调用对应的关闭函数，避免同时调用两个导致竞态
+    if(currentGachaType === 'single'){
+      closeGachaSingle();
+    }else if(currentGachaType === 'ten'){
+      closeGachaTen();
+    }
+  }
+  if(e.data && e.data.type === 'closeExchange'){
+    playBackSound(); // 播放返回音效
+    document.getElementById('exchangeModal').classList.remove('active');
+  }
+  if(e.data && e.data.type === 'closeRecharge') closeRecharge();
+  if(e.data && e.data.type === 'requestCfmCoin'){
+    updateCfmCoinDisplay();
+  }
+  if(e.data && e.data.type === 'openPayment'){
+    openPayment(e.data.tier);
+  }
+  if(e.data && e.data.type === 'closePayment'){
+    closePayment();
+  }
+  if(e.data && e.data.type === 'openExchangeConfirm'){
+    openExchangeConfirm(e.data.product, e.data.price, e.data.qty, e.data.cat);
+  }
+  if(e.data && e.data.type === 'closeExchangeConfirm'){
+    closeExchangeConfirm();
+  }
+  if(e.data && e.data.type === 'exchangeConfirm'){
+    // 执行兑换逻辑
+    doExchange();
+  }
+  if(e.data && e.data.type === 'paymentSuccess'){
+    var tierCoinsList = [3, 6, 30, 68, 128, 198, 328, 648];
+    var coins = tierCoinsList[currentPaymentTier] || 1296;
+    cfmCoinCount += coins;
+    updateCfmCoinDisplay();
+    // 不关闭弹窗，等用户点击成功提示页面后再关闭
+  }
+  if(e.data && e.data.type === 'tryBuy'){
+    // 直接打开二次确认页面，CFM币检查放在确认购买后
+    currentBuyTier = parseInt(e.data.tier) || 0;
+    openConfirm();
+  }
+  if(e.data && e.data.type === 'openConfirm'){
+    currentBuyTier = parseInt(e.data.tier) || 0;
+    openConfirm();
+  }
+  if(e.data && e.data.type === 'closeBuySuccess'){
+    closeBuySuccess();
+  }
+  if(e.data && e.data.type === 'closeZidianSerial'){
+    closeZidianSerial();
+  }
+  if(e.data && e.data.type === 'closeConfirm'){
+    closeConfirm();
+    if(e.data.action === 'confirm'){
+      var tierCoins = [1, 10, 66, 135];
+      var tierPrices = [6, 50, 328, 648];
+      var addCoins = tierCoins[currentBuyTier] || 1;
+      var costCoins = tierPrices[currentBuyTier] || 6;
+      if(cfmCoinCount < costCoins){
+        // CFM不够，关闭购买页面并打开充值页面
+        setTimeout(function(){ closeShop(); openRecharge(); }, 100);
+      } else {
+        // CFM足够，扣除CFM币并增加抽奖币
+        gachaCoinCount += addCoins;
+        cfmCoinCount -= costCoins;
+        updateGachaCoinDisplay();
+        updateCfmCoinDisplay();
+        // 显示恭喜获得弹窗
+        setTimeout(function(){ showBuySuccess(addCoins); }, 200);
+      }
+    }
+  }
+});
+</script>
+
+<!-- 购买弹窗：完全独立 -->
+<div class="shop-modal" id="shopModal">
+  <div class="shop-box">
+    <iframe id="shopIframe" allowfullscreen></iframe>
+  </div>
+</div>
+<!-- 充值弹窗：完全独立 -->
+<div class="recharge-modal" id="rechargeModal">
+  <div class="recharge-box">
+    <iframe id="rechargeIframe" allowfullscreen></iframe>
+  </div>
+</div>
+<!-- 二次确认弹窗：完全独立 -->
+<div class="confirm-modal" id="confirmModal">
+  <div class="confirm-box">
+    <iframe id="confirmIframe" allowfullscreen></iframe>
+  </div>
+</div>
+<!-- 支付方式选择弹窗：完全独立 -->
+<div class="payment-modal" id="paymentModal">
+  <div class="payment-box">
+    <iframe id="paymentIframe" allowfullscreen></iframe>
+  </div>
+</div>
+<!-- 兑换成功弹窗：完全独立 -->
+<div class="exchange-confirm-modal" id="exchangeConfirmModal">
+  <div class="exchange-confirm-box">
+    <iframe id="exchangeConfirmIframe" allowfullscreen></iframe>
+  </div>
+</div>
+
+<!-- 兑换失败弹窗（灰蓝金属风格） -->
+<div class="exchange-fail-mask" id="exchangeFailMask" style="z-index:100010;display:none;position:fixed;inset:0;background:rgba(0,0,0,0.75);align-items:center;justify-content:center;">
+  <div class="sb-confirm-panel">
+    <div class="sb-confirm-cflogo">CF</div>
+    <div class="sb-confirm-content">
+      <p id="exchangeFailTitle" style="color:#ff6b6b;font-weight:bold;">兑换失败</p>
+      <p id="exchangeFailMsg">兑换币不足</p>
+    </div>
+    <div class="sb-confirm-btns">
+      <button class="sb-btn-gold" onclick="closeExchangeFail()">确认</button>
+    </div>
+  </div>
+</div>
+
+<!-- 数量选择弹窗（复用兑换失败弹窗样式） -->
+<div class="numselect-mask" id="numSelectMask">
+  <div class="sb-confirm-panel">
+    <div class="sb-confirm-cflogo">CF</div>
+    <div class="sb-confirm-content">
+      <p id="numSelectTitle" style="font-size:3vh;color:#fff;font-weight:bold;margin-bottom:1vh;">选择数量</p>
+      <div class="numselect-row">
+        <button class="numselect-btn" id="numMinus">−</button>
+        <div class="numselect-value" id="numValue">1</div>
+        <button class="numselect-btn" id="numPlus">+</button>
+      </div>
+    </div>
+    <div class="sb-confirm-btns">
+      <button class="numselect-cancel-btn" id="numCancel">取消</button>
+      <button class="sb-btn-gold" id="numConfirm">确认</button>
+    </div>
+  </div>
+</div>
+<textarea class="shop-tpl" id="shopTpl"><!DOCTYPE html>
+<html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{width:100%;height:100%;overflow:hidden;background:#000}
+.shop-bg{width:100%;height:100%;object-fit:fill;display:block;position:absolute;top:0;left:0;z-index:1;pointer-events:none}
+.shop-btn{position:absolute;background:transparent;border:none;cursor:pointer;z-index:100;outline:none;-webkit-tap-highlight-color:transparent}.shop-btn:focus,.shop-btn:active,.shop-btn.selected{background:transparent!important;outline:none!important;border:none!important;box-shadow:none!important}
+
+</style>  <script src="data/gacha_base.js"></script>
+  <script src="data/config.js"></script>
+  <script src="data/item_box_config.js"></script>
+  <script src="data/buy_tiers.js"></script>
+  <script src="data/exchange_data.js"></script>
+  <script src="data/decompose_points.js"></script>
+</head><body>
+<img class="shop-bg" id="shopBg" src="images/common/pages/buy/shop_bg_0.png">
+<button class="shop-btn" id="shopClose" style="left:75%;top:14%;width:7%;height:9%"></button>
+<button class="shop-btn" data-tier="0" onclick="playClickSound();currentTier=0;document.getElementById('shopBg').src=shopImages[0];" style="left:55%;top:25%;width:26%;height:10%"></button>
+<button class="shop-btn" data-tier="1" onclick="playClickSound();currentTier=1;document.getElementById('shopBg').src=shopImages[1];" style="left:55%;top:37%;width:26%;height:10%"></button>
+<button class="shop-btn" data-tier="2" onclick="playClickSound();currentTier=2;document.getElementById('shopBg').src=shopImages[2];" style="left:55%;top:49%;width:26%;height:10%"></button>
+<button class="shop-btn" data-tier="3" onclick="playClickSound();currentTier=3;document.getElementById('shopBg').src=shopImages[3];" style="left:55%;top:61%;width:26%;height:10%"></button>
+<button class="shop-btn" id="buyBtn" onclick="playActionConfirmSound();parent.postMessage({type:'tryBuy',tier:currentTier,price:tierPrices[currentTier]},'*');" style="left:55%;top:78%;width:26%;height:10%"></button>
+<script>
+
+// ===== 点击音效（档位按钮）=====
+var audioClickPool = [];
+var audioClickIndex = 0;
+for(var i = 0; i < 3; i++){
+  var ac = new Audio('audio/gacha/click.m4a');
+  ac.preload = 'auto';
+  audioClickPool.push(ac);
+}
+function playClickSound(){
+  try{
+    var audio = audioClickPool[audioClickIndex];
+    audioClickIndex = (audioClickIndex + 1) % 3;
+    audio.currentTime = 0;
+    audio.play().catch(function(e){});
+  }catch(e){}
+}
+// ===== 点击音效结束 =====
+
+// ===== 操作确定按钮音效（购买按钮/分解/发送仓库）=====
+var actionConfirmAudioPool = [];
+var actionConfirmAudioIndex = 0;
+for(var i = 0; i < 3; i++){
+  var aca = new Audio('audio/ui/action_confirm.m4a');
+  aca.preload = 'auto';
+  actionConfirmAudioPool.push(aca);
+}
+function playActionConfirmSound(){
+  try{
+    var audio = actionConfirmAudioPool[actionConfirmAudioIndex];
+    actionConfirmAudioIndex = (actionConfirmAudioIndex + 1) % 3;
+    audio.currentTime = 0;
+    audio.play().catch(function(e){});
+  }catch(e){}
+}
+// ===== 操作确定按钮音效结束 =====
+
+// 音效对象（关闭购买页面时立刻播放）
+var audioCloseShop = new Audio('audio/buy/close.m4a');
+function playCloseShopSound(){
+  try{
+    audioCloseShop.currentTime = 0;
+    audioCloseShop.play().catch(function(e){});
+  }catch(e){}
+}
+
+var shopImages = [
+  "images/common/pages/buy/shop_bg_0.png",
+  "images/common/pages/buy/shop_bg_1.png",
+  "images/common/pages/buy/shop_bg_2.png",
+  "images/common/pages/buy/shop_bg_3.png"
+];
+var currentTier = 0;
+var tierPrices = [6, 50, 328, 648];
+
+document.getElementById('shopClose').addEventListener('click', function(){
+  playCloseShopSound(); // 立刻播放关闭音效
+  parent.postMessage('closeShop', '*');
+});
+
+</script>
+
+</body></html></textarea>
+<script>
+var shopTpl = document.getElementById('shopTpl').value;
+
+/* ===== 购买：完全独立 ===== */
+function openShop(){
+  var iframe = document.getElementById('shopIframe');
+  var modal = document.getElementById('shopModal');
+  // 先清空iframe，避免多次打开累积内容导致黑屏
+  iframe.srcdoc = '';
+  iframe.onload = function(){
+    // 只有当srcdoc是shopTpl时才显示，避免清空时触发onload
+    if(iframe.srcdoc && iframe.srcdoc.length > 100){
+      modal.className = 'shop-modal shop-show';
+    }
+  };
+  // 延迟设置srcdoc，确保先清空
+  setTimeout(function(){
+    iframe.srcdoc = shopTpl;
+  }, 10);
+  // 超时保护，确保一定能显示
+  setTimeout(function(){
+    if(!modal.classList.contains('shop-show')){
+      modal.className = 'shop-modal shop-show';
+    }
+  }, 500);
+}
+function closeShop(){
+  // 关闭音效已在shopTpl的关闭按钮click事件中播放（零帧起手），这里不再重复播放
+  var modal = document.getElementById('shopModal');
+  var iframe = document.getElementById('shopIframe');
+  modal.className = 'shop-modal';
+  // 延迟清空iframe，确保隐藏动画完成后再清空
+  setTimeout(function(){
+    iframe.srcdoc = '';
+  }, 300);
+}
+/* ===== 充值弹窗：完全独立 ===== */
+function openRecharge(){
+  playOpenSound(); // 播放打开音效
+  var modal = document.getElementById('rechargeModal');
+  var iframe = document.getElementById('rechargeIframe');
+  iframe.onload = function(){
+    modal.className = 'recharge-modal recharge-show';
+  };
+  iframe.src = 'pages/recharge.html?t=' + Date.now();
+  setTimeout(function(){
+    if(!modal.classList.contains('recharge-show')){
+      modal.className = 'recharge-modal recharge-show';
+    }
+  }, 300);
+}
+function closeRecharge(){
+  playBackSound(); // 播放关闭音效
+  document.getElementById('rechargeModal').className = 'recharge-modal';
+}
+/* ===== 二次确认弹窗：完全独立 ===== */
+function openConfirm(){
+  var modal = document.getElementById('confirmModal');
+  var iframe = document.getElementById('confirmIframe');
+  var loaded = false;
+  iframe.onload = function(){
+    loaded = true;
+    modal.className = 'confirm-modal confirm-show';
+  };
+  iframe.src = 'pages/confirm.html?t=' + Date.now();
+  setTimeout(function(){
+    if(!loaded){
+      modal.className = 'confirm-modal confirm-show';
+    }
+  }, 800);
+}
+function closeConfirm(){
+  document.getElementById('confirmModal').className = 'confirm-modal';
+  var iframe = document.getElementById('confirmIframe');
+  iframe.onload = null;
+  iframe.src = 'about:blank';
+}
+/* ===== 支付方式选择弹窗：完全独立 ===== */
+var currentPaymentTier = 7;
+function openPayment(tier){
+  currentPaymentTier = tier || 7;
+  var modal = document.getElementById('paymentModal');
+  var iframe = document.getElementById('paymentIframe');
+  var loaded = false;
+  iframe.onload = function(){
+    loaded = true;
+    modal.className = 'payment-modal payment-show';
+    // 传递档位信息给iframe
+    setTimeout(function(){
+      try{
+        iframe.contentWindow.postMessage({type:'setTier', tier: currentPaymentTier}, '*');
+      }catch(e){}
+    }, 100);
+  };
+  iframe.src = 'pages/buy_confirm.html?tier=' + currentPaymentTier + '&t=' + Date.now();
+  setTimeout(function(){
+    if(!loaded){
+      modal.className = 'payment-modal payment-show';
+      try{
+        iframe.contentWindow.postMessage({type:'setTier', tier: currentPaymentTier}, '*');
+      }catch(e){}
+    }
+  }, 800);
+}
+function closePayment(){
+  document.getElementById('paymentModal').className = 'payment-modal';
+  var iframe = document.getElementById('paymentIframe');
+  iframe.onload = null;
+  iframe.src = 'about:blank';
+}
+/* ===== 兑换成功弹窗：完全独立 ===== */
+/* ===== 数量选择弹窗 ===== */
+let numSelectTarget = {product:'', price:0, cat:'', max:99, now:1};
+
+// 强制让兑换商城iframe获得焦点，修复点击无响应的问题
+function focusExchangeIframe(){
+  try{
+    var exchangeIframe = document.getElementById('exchangeIframe');
+    if(exchangeIframe){
+      exchangeIframe.focus();
+      // 延迟一点再让iframe里的body获得焦点
+      setTimeout(function(){
+        try{
+          exchangeIframe.contentWindow.focus();
+          exchangeIframe.contentDocument.body.focus();
+        }catch(e){}
+      }, 50);
+    }
+  }catch(e){}
+}
+
+// 打开数量选择弹窗
+function openNumSelect(product, price, cat, max){
+  numSelectTarget = {product:product, price:price, cat:cat, max:max||99, now:1};
+  document.getElementById('numSelectTitle').textContent = '兑换【' + product + '】';
+  document.getElementById('numValue').textContent = '1';
+  document.getElementById('numSelectMask').classList.add('show');
+}
+
+// 绑定数量选择弹窗事件
+function bindNumSelect(){
+  // 减
+  document.getElementById('numMinus').onclick = function(){
+    if(numSelectTarget.now > 1){
+      numSelectTarget.now--;
+      document.getElementById('numValue').textContent = numSelectTarget.now;
+    }
+  };
+  // 加
+  document.getElementById('numPlus').onclick = function(){
+    if(numSelectTarget.now < numSelectTarget.max){
+      numSelectTarget.now++;
+      document.getElementById('numValue').textContent = numSelectTarget.now;
+    }
+  };
+  // 取消
+  document.getElementById('numCancel').onclick = function(){
+    document.getElementById('numSelectMask').classList.remove('show');
+    // 强制让兑换商城iframe获得焦点，修复点击无响应的问题
+    focusExchangeIframe();
+  };
+  // 确认
+  document.getElementById('numConfirm').onclick = function(){
+    var target = numSelectTarget;
+    document.getElementById('numSelectMask').classList.remove('show');
+    // 延迟一点再显示兑换确认弹窗，确保数量选择弹窗完全关闭
+    setTimeout(function(){
+      openExchangeConfirmInternal(target.product, target.price, target.now, target.cat);
+    }, 150);
+  };
+}
+
+// 兑换确认弹窗内部函数（不经过数量选择）
+function openExchangeConfirmInternal(product, price, qty, cat){
+  // 保存当前兑换信息
+  currentExchangeProduct = product || '';
+  currentExchangePrice = price || 0;
+  currentExchangeQty = qty || 1;
+  currentExchangeCat = cat || 'm4';
+  
+  var modal = document.getElementById('exchangeConfirmModal');
+  var iframe = document.getElementById('exchangeConfirmIframe');
+  var loaded = false;
+  iframe.onload = function(){
+    loaded = true;
+    iframe.contentWindow.postMessage({
+      type: 'setExchangeInfo',
+      product: currentExchangeProduct,
+      price: currentExchangePrice,
+      qty: currentExchangeQty,
+      cat: currentExchangeCat
+    }, '*');
+    modal.className = 'exchange-confirm-modal exchange-confirm-show';
+  };
+  iframe.src = 'pages/exchange_confirm.html?t=' + Date.now();
+  setTimeout(function(){
+    if(!loaded){
+      modal.className = 'exchange-confirm-modal exchange-confirm-show';
+    }
+  }, 800);
+}
+
+function openExchangeConfirm(product, price, qty, cat){
+  // 如果是紫电兑换币，先弹出数量选择
+  var isZidianCoin = (product && product.indexOf('紫电兑换币') !== -1);
+  if(isZidianCoin){
+    // 计算最大可兑换数量（根据当前熔岩兑换币数量）
+    var maxCount = 99;
+    if(price > 0){
+      maxCount = Math.floor(pointsCount / price);
+      if(maxCount < 1) maxCount = 1;
+      if(maxCount > 99) maxCount = 99;
+    }
+    openNumSelect(product, price, cat, maxCount);
+    return;
+  }
+  // 其他道具直接打开兑换确认
+  openExchangeConfirmInternal(product, price, qty, cat);
+}
+function closeExchangeConfirm(){
+  document.getElementById('exchangeConfirmModal').className = 'exchange-confirm-modal';
+  var iframe = document.getElementById('exchangeConfirmIframe');
+  iframe.onload = null;
+  iframe.src = 'about:blank';
+  // 强制让兑换商城iframe获得焦点，修复点击无响应的问题
+  focusExchangeIframe();
+}
+
+// 显示兑换失败弹窗
+function showExchangeFail(title, msg){
+  var mask = document.getElementById('exchangeFailMask');
+  if(mask){
+    document.getElementById('exchangeFailTitle').textContent = title || '兑换失败';
+    document.getElementById('exchangeFailMsg').textContent = msg || '兑换币不足';
+    mask.style.display = 'flex';
+  }
+}
+
+// 关闭兑换失败弹窗
+function closeExchangeFail(){
+  var mask = document.getElementById('exchangeFailMask');
+  if(mask) mask.style.display = 'none';
+}
+
+
+
+// 执行兑换逻辑
+function doExchange(){
+  if(!currentExchangeProduct){
+    closeExchangeConfirm();
+    return;
+  }
+  
+  var totalCost = currentExchangePrice * currentExchangeQty;
+  var isZidianCat = (currentExchangeCat === 'zidian');
+  
+  // 根据分类决定扣除哪种兑换币
+  if(isZidianCat){
+    // 紫电熔岩分类：扣除紫电兑换币
+    if(zidianPointsCount < totalCost){
+      showExchangeFail('兑换失败', '需要' + totalCost + '紫电兑换币，当前只有' + zidianPointsCount + '紫电兑换币');
+      closeExchangeConfirm();
+      return;
+    }
+    zidianPointsCount -= totalCost;
+    updateZidianPointsDisplay();
+    // 通知兑换商城页面更新紫电币数量显示
+    var exchangeIframe = document.getElementById('exchangeIframe');
+    if(exchangeIframe && exchangeIframe.contentWindow){
+      exchangeIframe.contentWindow.postMessage({type:'updateZidianPoints', points: zidianPointsCount}, '*');
+    }
+  }else{
+    // 其他分类：扣除熔岩兑换币
+    if(pointsCount < totalCost){
+      showExchangeFail('兑换失败', '需要' + totalCost + '熔岩兑换币，当前只有' + pointsCount + '熔岩兑换币');
+      closeExchangeConfirm();
+      return;
+    }
+    pointsCount -= totalCost;
+    updatePointsDisplay();
+  }
+  
+  // 获取道具信息
+  var itemInfo = findExchangeItem(currentExchangeProduct);
+  
+  // 判断是否是兑换紫电兑换币（不发仓库，直接增加计数）
+  var isZidianCoinExchange = (currentExchangeProduct && currentExchangeProduct.indexOf('紫电兑换币') !== -1);
+  
+  if(isZidianCoinExchange){
+    // 兑换紫电兑换币：通知兑换商城增加计数（以兑换商城为准），首页等待同步
+    var exchangeIframe = document.getElementById('exchangeIframe');
+    if(exchangeIframe && exchangeIframe.contentWindow){
+      exchangeIframe.contentWindow.postMessage({type:'addZidianPoints', count: currentExchangeQty}, '*');
+    }
+    // 关闭兑换确认弹窗
+    closeExchangeConfirm();
+    // 显示恭喜获得页面
+    var coinItem = {
+      name: '紫电兑换币',
+      count: currentExchangeQty,
+      quality: 'purple',
+      image: itemInfo.image || 'images/items_box/紫电兑换币/small.png',
+      showcase: false
+    };
+    showSendToWarehouseReward([coinItem]);
+    return;
+  }
+  
+  // 构造道具对象
+  var item = {
+    name: itemInfo.name || currentExchangeProduct,
+    count: currentExchangeQty,
+    quality: itemInfo.quality,
+    image: itemInfo.image,
+    showcase: itemInfo.showcase || false
+  };
+  
+  // 关闭兑换确认弹窗
+  closeExchangeConfirm();
+  
+  // 显示恭喜获得页面（参考暂存箱发放仓库单个道具的代码）
+  showSendToWarehouseReward([item]);
+}
+
+/* ===== 监听postMessage ===== */
+window.addEventListener('message', function(e){
+  if(e.data === 'closeShop') closeShop();
+});
+</script>
+<script>
+function openExchange(){
+  var modal = document.getElementById('exchangeModal');
+  var iframe = document.getElementById('exchangeIframe');
+  modal.className = 'exchange-modal active';
+  // 打开兑换商城时，从兑换商城获取紫电兑换币计数（以兑换商城为准），同时发送熔岩兑换币数量
+  setTimeout(function(){
+    try{
+      if(iframe && iframe.contentWindow){
+        iframe.contentWindow.postMessage({type:'getZidianPoints'}, '*');
+        iframe.contentWindow.postMessage({type:'updatePoints', points: pointsCount}, '*');
+      }
+    }catch(e){}
+  }, 200);
+  setTimeout(function(){
+    try{
+      var doc = iframe.contentDocument || iframe.contentWindow.document;
+      var closeBtn = doc.querySelector('.exchange-close') || doc.getElementById('exchangeClose');
+      if(closeBtn) closeBtn.addEventListener('click', closeExchange);
+      var backBtn = doc.querySelector('[data-name="返回"]') || doc.querySelector('.back');
+      if(backBtn) backBtn.addEventListener('click', closeExchange);
+    }catch(e){ console.log('绑定关闭按钮失败:', e); }
+  }, 500);
+}
+function closeExchange(){
+  document.getElementById('exchangeModal').className = 'exchange-modal';
+}
+document.querySelector('[data-name="兑换"]').addEventListener('click', openExchange);
+</script>
+<div class="reward-modal" id="rewardModal">
+    <iframe id="rewardIframe" allowfullscreen></iframe>
+  </div>
+  <div class="storage-modal" id="storageModal">
+    <iframe id="storageIframe" allowfullscreen></iframe>
+  </div>
+  <div class="warehouse-modal" id="warehouseModal">
+    <iframe id="warehouseIframe" allowfullscreen></iframe>
+  </div>
+  <div class="decompose-reward-modal" id="decomposeRewardModal">
+    <iframe id="decomposeRewardIframe" allowfullscreen></iframe>
+  </div>
+  <div class="warehouse-multi-modal" id="warehouseMultiModal">
+    <iframe id="warehouseMultiIframe" allowfullscreen></iframe>
+  </div>
+<!-- 购买抽奖币成功弹窗 -->
+<div class="buy-success-modal" id="buySuccessModal">
+  <div class="buy-success-box">
+    <iframe id="buySuccessIframe" allowfullscreen></iframe>
+  </div>
+</div>
+
+<!-- 紫电熔岩获得编号页面 -->
+<div class="zidian-serial-modal" id="zidianSerialModal">
+  <div class="zidian-serial-box">
+    <iframe id="zidianSerialIframe" allowfullscreen></iframe>
+  </div>
+</div>
+
+<!-- 额外加赠提示弹窗 -->
+<div class="bonus-tip-modal" id="bonusTipModal">
+  <div class="bonus-tip-box">
+    <iframe id="bonusTipIframe" allowfullscreen></iframe>
+  </div>
+</div>
+
+<!-- 额外加赠奖励弹窗 -->
+<div class="bonus-reward-modal" id="bonusRewardModal">
+  <div class="bonus-reward-box">
+    <iframe id="bonusRewardIframe" allowfullscreen></iframe>
+  </div>
+</div>
+
+<!-- 神话加赠提示弹窗 -->
+<div class="mythic-tip-modal" id="mythicTipModal">
+  <div class="mythic-tip-box">
+    <iframe id="mythicTipIframe" allowfullscreen></iframe>
+  </div>
+</div>
+
+<!-- 神话加赠奖励弹窗 -->
+<div class="mythic-reward-modal" id="mythicRewardModal">
+  <div class="mythic-reward-box">
+    <iframe id="mythicRewardIframe" allowfullscreen></iframe>
+  </div>
+</div>
+<!-- 选择奖池弹窗 -->
+<div class="pool-select-modal" id="poolSelectModal">
+  <iframe id="poolSelectIframe" allowfullscreen></iframe>
+</div>
+<!-- 转接页面 -->
+<div class="transition-modal" id="transitionModal">
+  <div class="transition-stage" id="transitionStage">
+    <img src="images/common/pages/home/transition_bg.png" alt="">
+  </div>
+</div>
+
+<script>
+// 动态生成操作指南和免责声明
+document.addEventListener('DOMContentLoaded', function(){
+  if(typeof SIMULATOR_CONFIG !== 'undefined'){
+    var guideTitle = document.getElementById('guideTitle');
+    if(guideTitle) guideTitle.textContent = SIMULATOR_CONFIG.guide.title;
+    var guideContent = document.getElementById('guideContent');
+    if(guideContent && SIMULATOR_CONFIG.guide.steps){
+      guideContent.innerHTML = SIMULATOR_CONFIG.guide.steps.map(function(step){
+        return '<p>' + step + '</p>';
+      }).join('');
+    }
+    var disclaimerText = document.getElementById('disclaimerText');
+    if(disclaimerText) disclaimerText.textContent = SIMULATOR_CONFIG.disclaimer;
+  }
+});
+</script>
+
+<script>
+// 页面加载完成后启动预加载
+window.addEventListener('load', function() {
+  if (typeof preloadResources === 'function') {
+    setTimeout(function() {
+      preloadResources();
+    }, 100);
+  }
+});
+</script>
+</body>
+</html>

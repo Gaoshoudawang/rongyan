@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta name="color-scheme" content="light only">
+  <meta name="supported-color-schemes" content="light">
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>充值</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{width:100%;height:100%;overflow:hidden;background:#000}
+.stage{position:relative;width:2340px;height:1080px;transform-origin:top left;overflow:hidden}
+.bg-img{position:absolute;top:0;left:0;width:100%;height:100%;object-fit:cover;display:block;pointer-events:none}
+.hotspot{position:absolute;cursor:pointer;z-index:10;background:transparent;border:none;outline:none}
+.hotspot:active{background:rgba(255,215,0,0.1)}
+
+/* 禁止长按查看图片/保存图片 */
+img{
+  -webkit-touch-callout:none;
+  -webkit-user-select:none;
+  user-select:none;
+  -webkit-tap-highlight-color:transparent;
+}
+/* 禁止全局右键菜单 */
+*{
+  -webkit-touch-callout:none;
+  -webkit-user-select:none;
+  user-select:none;
+}
+</style>
+<style>
+
+/* ===== 防止浏览器暗夜模式自动反转颜色 ===== */
+:root {
+  color-scheme: light only;
+  -webkit-color-scheme: light only;
+}
+html {
+  color-scheme: light only;
+  -webkit-color-scheme: light only;
+  background-color: #000 !important;
+}
+body {
+  color-scheme: light only;
+  -webkit-color-scheme: light only;
+  background-color: #000 !important;
+  -webkit-lightness-adjust: none !important;
+}
+/* 防止图片被反转 */
+img {
+  -webkit-filter: none !important;
+  filter: none !important;
+}
+/* ============================================ */
+
+</style>
+</head>
+<body>
+<div class="stage" id="stage">
+  <img class="bg-img" id="bgImg" src="../images/common/pages/recharge/bg.jpg" alt="CFM币充值">
+  <!-- 右上角CFM币显示（无热区，仅显示，位置与首页兑换币一致） -->
+  <div id="cfmCoinDisplay" style="position:absolute;left:1900px;top:16px;display:flex;align-items:center;gap:6px;z-index:20;padding:5px 10px;border-radius:8px;pointer-events:none">
+    <img src="../images/common/coins/cfm_coin_icon.png" style="height:44px;width:auto;display:block;pointer-events:none">
+    <span id="cfmCoinNum" style="color:#fff;font-size:32px;font-weight:bold;line-height:44px;text-shadow:0 0 5px rgba(0,0,0,0.8);pointer-events:none">0</span>
+  </div>
+  <!-- 左上角返回按钮 -->
+  <button class="hotspot" id="backBtn" style="left:20px;top:15px;width:90px;height:90px"></button>
+  <!-- 左侧CFM币分类按钮 -->
+  <button class="hotspot" id="cfmBtn" style="left:0;top:100px;width:130px;height:110px"></button>
+  <!-- 左侧V特权分类按钮 -->
+  <button class="hotspot" id="vipBtn" style="left:0;top:230px;width:130px;height:110px"></button>
+  <!-- 充值档位按钮 -->
+  <button class="hotspot" data-tier="0" style="left:280px;top:120px;width:280px;height:90px"></button>
+  <button class="hotspot" data-tier="1" style="left:620px;top:120px;width:280px;height:90px"></button>
+  <button class="hotspot" data-tier="2" style="left:960px;top:120px;width:280px;height:90px"></button>
+  <button class="hotspot" data-tier="3" style="left:320px;top:260px;width:320px;height:320px"></button>
+  <button class="hotspot" data-tier="4" style="left:680px;top:260px;width:320px;height:320px"></button>
+  <button class="hotspot" data-tier="5" style="left:1040px;top:260px;width:320px;height:320px"></button>
+  <button class="hotspot" data-tier="6" style="left:320px;top:620px;width:320px;height:320px"></button>
+  <button class="hotspot" data-tier="7" style="left:680px;top:620px;width:320px;height:320px"></button>
+</div>
+
+<script>
+
+// ===== 接收主页面传来的CFM币数量 =====
+window.addEventListener('message', function(e){
+  if(e.data && e.data.type === 'updateCfmCoin'){
+    var cfmNum = document.getElementById('cfmCoinNum');
+    if(cfmNum){
+      cfmNum.textContent = e.data.count || 0;
+    }
+  }
+});
+
+// 页面加载完成后，向主页面请求CFM币数量
+window.addEventListener('load', function(){
+  setTimeout(function(){
+    window.parent.postMessage({type:'requestCfmCoin'}, '*');
+  }, 100);
+});
+
+// ===== 点击音效 =====
+var clickAudioPool = [];
+var clickAudioIndex = 0;
+for(var i = 0; i < 5; i++){
+  var ca = new Audio('../audio/gacha/click.m4a');
+  ca.preload = 'auto';
+  clickAudioPool.push(ca);
+}
+function playClickSound(){
+  try{
+    var audio = clickAudioPool[clickAudioIndex];
+    clickAudioIndex = (clickAudioIndex + 1) % 5;
+    audio.currentTime = 0;
+    audio.play().catch(function(e){});
+  }catch(e){}
+}
+// ===== 点击音效结束 =====
+
+var bgImg = document.getElementById('bgImg');
+var CFM_BG = '../images/common/pages/recharge/bg.jpg';
+var VIP_BG = '../images/common/pages/recharge/bg.jpg';
+
+// 自适应缩放
+function layout(){
+  var s = Math.min(window.innerWidth/2340, window.innerHeight/1080);
+  document.getElementById('stage').style.transform = 'scale('+s+')';
+  document.getElementById('stage').style.left = (window.innerWidth - 2340*s)/2 + 'px';
+  document.getElementById('stage').style.top = (window.innerHeight - 1080*s)/2 + 'px';
+}
+window.addEventListener('resize', layout);
+layout();
+
+// 返回按钮关闭弹窗
+document.getElementById('backBtn').addEventListener('click', function(){
+  window.parent.postMessage({type:'closeRecharge'}, '*');
+});
+
+// 切换到CFM币页面
+document.getElementById('cfmBtn').addEventListener('click', function(){
+  playClickSound(); // 播放点击音效
+  bgImg.src = CFM_BG;
+});
+
+// 切换到V特权页面
+document.getElementById('vipBtn').addEventListener('click', function(){
+  playClickSound(); // 播放点击音效
+  bgImg.src = VIP_BG;
+});
+// 充值档位按钮：点击打开支付方式选择页面
+document.querySelectorAll('.hotspot[data-tier]').forEach(function(btn){
+  btn.addEventListener('click', function(){
+    playClickSound(); // 播放点击音效
+    var tier = parseInt(this.getAttribute('data-tier'));
+    window.parent.postMessage({type:'openPayment', tier: tier}, '*');
+  });
+});
+</script>
+
+<script>
+// 禁止长按弹出菜单
+document.addEventListener('contextmenu', function(e){
+  e.preventDefault();
+  return false;
+});
+// 禁止图片拖拽
+document.addEventListener('dragstart', function(e){
+  if(e.target.tagName === 'IMG'){
+    e.preventDefault();
+    return false;
+  }
+});
+</script>
+</body>
+</html>

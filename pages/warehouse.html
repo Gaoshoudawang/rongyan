@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta name="color-scheme" content="light only">
+  <meta name="supported-color-schemes" content="light">
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>仓库</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;-webkit-user-select:none;-moz-user-select:none;-ms-user-select:none;user-select:none;-webkit-touch-callout:none}
+html,body{width:100%;height:100%;overflow:hidden;background:#000}
+.stage{position:relative;width:2340px;height:1080px;transform-origin:top left;overflow:hidden}
+.bg-img{position:absolute;top:0;left:0;width:100%;height:100%;object-fit:cover;pointer-events:none}
+/* 滚动容器 - 靠右边 */
+.scroll-container{position:absolute;top:150px;right:80px;width:1000px;height:850px;overflow-y:auto;overflow-x:hidden;padding:30px;z-index:10}
+.scroll-container::-webkit-scrollbar{display:none}
+.scroll-container{scrollbar-width:none;-ms-overflow-style:none}
+/* 空提示 */
+.empty-tip{text-align:center;color:#fff;font-size:32px;padding:100px 0;text-shadow:0 0 10px rgba(0,0,0,0.8)}
+/* 道具网格 - 2个一行 */
+.items-grid{display:grid;grid-template-columns:repeat(2,38%);justify-content:center;row-gap:48px;column-gap:8px;margin-bottom:40px}
+/* 道具格子 */
+.item-slot{position:relative;width:100%;aspect-ratio:1;display:flex;align-items:center;justify-content:center;transition:all 0.2s;transform:translateX(40%)}
+.item-slot .slot-bg{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;display:block}
+.item-slot .item-img{position:absolute;inset:15px;width:calc(100% - 30px);height:calc(100% - 30px);object-fit:contain;display:block;z-index:2}
+.item-slot .item-name{position:absolute;left:5px;top:20px;right:auto;text-align:left;font-size:30px;font-weight:bold;color:#ddd;text-shadow:0 2px 6px rgba(0,0,0,0.95),0 0 10px rgba(0,0,0,0.8);z-index:3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:90%;display:flex;align-items:center;gap:6px}
+.item-slot .item-name .showcase-icon{width:30px;height:30px;object-fit:contain;flex-shrink:0}
+
+.item-slot .item-count{position:absolute;right:30%;bottom:30%;color:#fff;font-size:22px;font-weight:bold;text-shadow:0 0 5px rgba(0,0,0,0.9);z-index:4}
+/* 底部按钮区域 */
+.bottom-bar{position:absolute;bottom:0;left:0;right:0;height:140px;z-index:20}
+/* 关闭按钮 */
+.close-btn{position:absolute;left:40px;top:30px;width:100px;height:100px;background:transparent;border:none;cursor:pointer;z-index:100}
+</style>
+<style>
+
+/* ===== 防止浏览器暗夜模式自动反转颜色 ===== */
+:root {
+  color-scheme: light only;
+  -webkit-color-scheme: light only;
+}
+html {
+  color-scheme: light only;
+  -webkit-color-scheme: light only;
+  background-color: #000 !important;
+}
+body {
+  color-scheme: light only;
+  -webkit-color-scheme: light only;
+  background-color: #000 !important;
+  -webkit-lightness-adjust: none !important;
+}
+/* 防止图片被反转 */
+img {
+  -webkit-filter: none !important;
+  filter: none !important;
+}
+/* ============================================ */
+
+</style>
+  <script src="../data/item_base_name_map.js"></script>
+<script src="../data/item_mapping.js"></script>
+  <script src="../data/item_box_config.js"></script>
+</head>
+<body>
+<div class="stage" id="stage">
+  <img class="bg-img" src="../images/common/pages/warehouse/bg.png" alt="仓库背景">
+  <button class="close-btn" id="closeBtn"></button>
+  <div class="scroll-container" id="scrollContainer">
+    <div class="empty-tip" id="emptyTip" style="display:none"></div>
+    <div class="items-grid" id="itemsGrid"></div>
+  </div>
+  <div class="bottom-bar"></div>
+</div>
+<script>
+
+// 盒子函数：根据道具名称和图片类型获取图片路径
+// 支持带数量的道具名称，如"近战夺宝积分×3"、"200钻石宝箱"
+function getItemImage(itemName, type) {
+  if(!itemName) return '';
+  
+  // 先获取基础名称（去掉数量后缀）
+  var baseName = itemName.replace(/[×*]\d+$/, '');
+  
+  // 1. 先查映射表（处理特殊格式，如"200钻石宝箱" → "钻石宝箱"）
+  if(window.ITEM_BASE_NAME_MAP && window.ITEM_BASE_NAME_MAP[itemName]){
+    baseName = window.ITEM_BASE_NAME_MAP[itemName];
+  }
+  // 2. 去掉数量后缀后，再查一次映射表
+  else if(window.ITEM_BASE_NAME_MAP && window.ITEM_BASE_NAME_MAP[baseName]){
+    baseName = window.ITEM_BASE_NAME_MAP[baseName];
+  }
+  
+  // 3. 如果请求small.png，且该道具有showcase，则返回showcase.png（有showcase的盒子用showcase复用为small）
+  if(type === 'small' && window.ITEM_BOX_CONFIG && window.ITEM_BOX_CONFIG[baseName] && window.ITEM_BOX_CONFIG[baseName].has_showcase){
+    return '../images/items_box/' + baseName + '/showcase.png';
+  }
+  
+  return '../images/items_box/' + baseName + '/' + type + '.png';
+}
+
+// 三种品质的黑色小方块图片
+
+
+// 仓库数据
+var warehouseItems = [];
+
+// 道具名称到item小图路径的映射表（暂存箱/仓库统一用item小图显示）
+
+
+
+// 自适应缩放
+function layout(){
+  var s = Math.min(window.innerWidth/2340, window.innerHeight/1080);
+  document.getElementById('stage').style.transform = 'scale('+s+')';
+  document.getElementById('stage').style.left = (window.innerWidth - 2340*s)/2 + 'px';
+  document.getElementById('stage').style.top = (window.innerHeight - 1080*s)/2 + 'px';
+}
+window.addEventListener('resize', layout);
+layout();
+
+// 渲染仓库
+function renderWarehouse(){
+  var grid = document.getElementById('itemsGrid');
+  var emptyTip = document.getElementById('emptyTip');
+  
+  if(warehouseItems.length === 0){
+    emptyTip.style.display = 'block';
+    grid.innerHTML = '';
+    return;
+  }
+  
+  emptyTip.style.display = 'none';
+  grid.innerHTML = '';
+  
+  // 按品质排序：金色 > 紫色 > 白色
+  warehouseItems.sort(function(a, b){
+    var qualityOrder = {red: -1, gold: 0, purple: 1, white: 2};
+    if(qualityOrder[a.quality] !== qualityOrder[b.quality]){
+      return qualityOrder[a.quality] - qualityOrder[b.quality];
+    }
+    return (a.weight || 0) - (b.weight || 0);
+  });
+  
+  warehouseItems.forEach(function(item, index){
+    var slot = document.createElement('div');
+    slot.className = 'item-slot quality-' + item.quality;
+    slot.dataset.index = index;
+    
+    var slotBg = document.createElement('img');
+    slotBg.className = 'slot-bg';
+    slotBg.src = SLOT_IMAGES[item.quality];
+    slot.appendChild(slotBg);
+    
+    var itemImg = document.createElement('img');
+    itemImg.className = 'item-img';
+    // 只使用盒子函数获取图片（无兜底）
+    var smallImgSrc = getItemImage(item.name, 'small');
+    if(smallImgSrc && smallImgSrc.indexOf('images/') === 0){
+      smallImgSrc = '../' + smallImgSrc;
+    }
+    itemImg.src = smallImgSrc;
+    slot.appendChild(itemImg);
+    
+    var itemName = document.createElement('div');
+    itemName.className = 'item-name';
+    // 有出货动画的道具，在文字前面添加v标
+    if(window.ITEM_BOX_CONFIG && window.ITEM_BOX_CONFIG[item.name] && window.ITEM_BOX_CONFIG[item.name].has_showcase){
+      var showcaseIcon = document.createElement('img');
+      showcaseIcon.className = 'showcase-icon';
+      showcaseIcon.src = '../images/common/showcase_icon.png';
+      itemName.appendChild(showcaseIcon);
+    }
+    var nameText = document.createElement('span');
+    nameText.textContent = item.name;
+    itemName.appendChild(nameText);
+    slot.appendChild(itemName);
+    
+    if(item.count > 1){
+      var itemCount = document.createElement('div');
+      itemCount.className = 'item-count';
+      itemCount.textContent = 'x' + item.count;
+      slot.appendChild(itemCount);
+    }
+    
+    grid.appendChild(slot);
+  });
+}
+
+// 接收主页面传来的仓库数据
+window.addEventListener('message', function(e){
+  if(e.data && e.data.type === 'warehouseData'){
+    warehouseItems = e.data.items || [];
+    renderWarehouse();
+  }
+});
+
+// 关闭按钮
+document.getElementById('closeBtn').addEventListener('click', function(){
+  window.parent.postMessage({type:'closeWarehouse'}, '*');
+});
+</script>
+
+<script>
+// 禁止长按弹出菜单
+document.addEventListener('contextmenu', function(e){
+  e.preventDefault();
+  return false;
+});
+// 禁止图片拖拽
+document.addEventListener('dragstart', function(e){
+  if(e.target.tagName === 'IMG'){
+    e.preventDefault();
+    return false;
+  }
+});
+</script>
+</body>
+</html>
