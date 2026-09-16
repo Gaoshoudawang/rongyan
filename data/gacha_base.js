@@ -18,7 +18,7 @@ window.CURRENT_POOL = 'm4';
 function generatePoolA(weaponName) {
   return [
     // 金色品质（11个，27.9%）
-    {name: weaponName + '-燃竞之巅', quality: 'gold', image: '../images/items_box/' + weaponName + '-燃竞之巅/small.png', weight: 0.15},
+    {name: weaponName + '-燃竞之巅', quality: 'gold', image: '../images/items_box/' + weaponName + '-燃竞之巅/showcase.png', weight: 0.15},
     {name: weaponName + '-熔岩之触', quality: 'gold', image: '../images/items_box/熔岩之触/small.png', weight: 1.00},
     {name: weaponName + '-熔岩之殇', quality: 'gold', image: '../images/items_box/熔岩之殇/small.png', weight: 1.00},
     {name: weaponName + '-熔岩之印', quality: 'gold', image: '../images/items_box/熔岩之印/small.png', weight: 1.00},
@@ -42,7 +42,7 @@ function generatePoolA(weaponName) {
 function generatePoolB(weaponName) {
   return [
     // 金色品质（7个，27.9%）
-    {name: weaponName + '-燃竞之巅', quality: 'gold', image: '../images/items_box/' + weaponName + '-燃竞之巅/small.png', weight: 0.15},
+    {name: weaponName + '-燃竞之巅', quality: 'gold', image: '../images/items_box/' + weaponName + '-燃竞之巅/showcase.png', weight: 0.15},
     {name: '喷火龙玩偶', quality: 'gold', image: '../images/items_box/喷火龙玩偶/small.png', weight: 0.30},
     {name: '熔岩背包', quality: 'gold', image: '../images/items_box/熔岩背包/small.png', weight: 0.30},
     {name: '熔岩火龙挂饰', quality: 'gold', image: '../images/items_box/熔岩火龙挂饰/small.png', weight: 3.575},

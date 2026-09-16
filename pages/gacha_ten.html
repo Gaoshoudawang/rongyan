@@ -647,8 +647,8 @@ function getShowcaseImage(itemName) {
 }
 
 function getShowcaseBgImage(itemName) {
-  // 出货动画背景图统一使用common目录
-  return '../images/common/animation_bg/bg_start.webp';
+  // 出货动画背景图从映射表中获取
+  return SHOWCASE_BG_IMAGES[itemName] || null;
 }
 
 
