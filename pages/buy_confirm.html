@@ -80,6 +80,24 @@ img {
 </div>
 
 <script>
+// ===== 点击音效 =====
+var clickAudioPool = [];
+var clickAudioIndex = 0;
+for(var i = 0; i < 5; i++){
+  var ca = new Audio('../audio/gacha/click.m4a');
+  ca.preload = 'auto';
+  clickAudioPool.push(ca);
+}
+function playClickSound(){
+  try{
+    var audio = clickAudioPool[clickAudioIndex];
+    clickAudioIndex = (clickAudioIndex + 1) % 5;
+    audio.currentTime = 0;
+    audio.play().catch(function(e){});
+  }catch(e){}
+}
+// ===== 点击音效结束 =====
+
 // 档位对应的金额
 var tierAmounts = ['¥3.00', '¥6.00', '¥30.00', '¥68.00', '¥128.00', '¥198.00', '¥328.00', '¥648.00'];
 var tierCoins = [3, 6, 30, 68, 128, 198, 328, 648];
@@ -145,6 +163,7 @@ document.addEventListener('DOMContentLoaded', function(){
   if(mask2){
     mask2.addEventListener('click', function(e){
       e.stopPropagation();
+      playClickSound(); // 播放点击音效
       // 不单独隐藏，直接通知父页面关闭整个支付弹窗，避免闪烁
       window.parent.postMessage({type:'closePayment'}, '*');
     });

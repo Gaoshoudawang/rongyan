@@ -16,7 +16,9 @@ html,body{width:100%;height:100%;overflow:hidden;background:#000}
 .scroll-container::-webkit-scrollbar{display:none}
 .scroll-container{scrollbar-width:none;-ms-overflow-style:none}
 /* 空提示 */
-.empty-tip{text-align:center;color:#fff;font-size:32px;padding:100px 0;text-shadow:0 0 10px rgba(0,0,0,0.8)}
+.empty-tip{position:absolute;right:200px;top:50%;transform:translateY(-50%);text-align:center;z-index:20}
+.empty-tip .empty-text{color:#fff;font-size:36px;font-weight:bold;text-shadow:0 0 10px rgba(0,0,0,0.8);margin-bottom:30px}
+.empty-tip .empty-btn{display:inline-block;padding:20px 60px;background:linear-gradient(180deg,#f5d78e,#d4a84b);color:#3a2a0a;font-size:32px;font-weight:bold;border:none;border-radius:6px;cursor:pointer;text-shadow:0 1px 2px rgba(255,255,255,0.3);box-shadow:0 4px 15px rgba(0,0,0,0.4)}
 /* 道具网格 - 2个一行 */
 .items-grid{display:grid;grid-template-columns:repeat(2,38%);justify-content:center;row-gap:48px;column-gap:8px;margin-bottom:40px}
 /* 道具格子 */
@@ -67,36 +69,51 @@ img {
   <img class="bg-img" src="../images/common/pages/warehouse/bg.png" alt="仓库背景">
   <button class="close-btn" id="closeBtn"></button>
   <div class="scroll-container" id="scrollContainer">
-    <div class="empty-tip" id="emptyTip" style="display:none"></div>
+    <div class="empty-tip" id="emptyTip" style="display:none">
+      <div class="empty-text">无可装备的道具</div>
+      <button class="empty-btn" id="emptyBtn">前往获取</button>
+    </div>
     <div class="items-grid" id="itemsGrid"></div>
   </div>
   <div class="bottom-bar"></div>
 </div>
 <script>
 
+// ===== 点击音效 =====
+var clickAudioPool = [];
+var clickAudioIndex = 0;
+for(var i = 0; i < 5; i++){
+  var ca = new Audio('../audio/gacha/click.m4a');
+  ca.preload = 'auto';
+  clickAudioPool.push(ca);
+}
+function playClickSound(){
+  try{
+    var audio = clickAudioPool[clickAudioIndex];
+    clickAudioIndex = (clickAudioIndex + 1) % 5;
+    audio.currentTime = 0;
+    audio.play().catch(function(e){});
+  }catch(e){}
+}
+// ===== 点击音效结束 =====
+
 // 盒子函数：根据道具名称和图片类型获取图片路径
 // 支持带数量的道具名称，如"近战夺宝积分×3"、"200钻石宝箱"
 function getItemImage(itemName, type) {
   if(!itemName) return '';
-  
-  // 先获取基础名称（去掉数量后缀）
-  var baseName = itemName.replace(/[×*]\d+$/, '');
-  
   // 1. 先查映射表（处理特殊格式，如"200钻石宝箱" → "钻石宝箱"）
   if(window.ITEM_BASE_NAME_MAP && window.ITEM_BASE_NAME_MAP[itemName]){
-    baseName = window.ITEM_BASE_NAME_MAP[itemName];
+    var baseName = window.ITEM_BASE_NAME_MAP[itemName];
+    return '../images/items_box/' + baseName + '/' + type + '.png';
   }
-  // 2. 去掉数量后缀后，再查一次映射表
-  else if(window.ITEM_BASE_NAME_MAP && window.ITEM_BASE_NAME_MAP[baseName]){
-    baseName = window.ITEM_BASE_NAME_MAP[baseName];
+  // 2. 再用正则去掉末尾的×数字（处理标准格式，如"近战夺宝积分×3" → "近战夺宝积分"）
+  var cleanName = itemName.replace(/[×*]\d+$/, '');
+  // 3. 去掉数量后缀后，再查一次映射表（处理带数量的特殊格式，如"印花|兔兔战士×1" → "印花|兔兔战士" → "印花兔兔战士"）
+  if(window.ITEM_BASE_NAME_MAP && window.ITEM_BASE_NAME_MAP[cleanName]){
+    var baseName = window.ITEM_BASE_NAME_MAP[cleanName];
+    return '../images/items_box/' + baseName + '/' + type + '.png';
   }
-  
-  // 3. 如果请求small.png，且该道具有showcase，则返回showcase.png（有showcase的盒子用showcase复用为small）
-  if(type === 'small' && window.ITEM_BOX_CONFIG && window.ITEM_BOX_CONFIG[baseName] && window.ITEM_BOX_CONFIG[baseName].has_showcase){
-    return '../images/items_box/' + baseName + '/showcase.png';
-  }
-  
-  return '../images/items_box/' + baseName + '/' + type + '.png';
+  return '../images/items_box/' + cleanName + '/' + type + '.png';
 }
 
 // 三种品质的黑色小方块图片
@@ -197,6 +214,12 @@ window.addEventListener('message', function(e){
 
 // 关闭按钮
 document.getElementById('closeBtn').addEventListener('click', function(){
+  window.parent.postMessage({type:'closeWarehouse'}, '*');
+});
+
+// 前往获取按钮：和关闭按钮一样返回首页
+document.getElementById('emptyBtn').addEventListener('click', function(){
+  playClickSound();
   window.parent.postMessage({type:'closeWarehouse'}, '*');
 });
 </script>
