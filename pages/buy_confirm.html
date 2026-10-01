@@ -18,7 +18,7 @@ html,body{width:100%;height:100%;overflow:hidden;background:#000}
 .success-mask{position:fixed;inset:0;z-index:99999;background:rgba(0,0,0,0.85);display:none;align-items:center;justify-content:center;cursor:pointer;}
 .success-mask.show{display:flex;}
 .success-img{width:100%;height:100%;object-fit:contain;display:block;pointer-events:none}
-.success-mask2{position:fixed;inset:0;z-index:99999;background:rgba(0,0,0,0.85);display:none;align-items:center;justify-content:center;cursor:pointer;}
+.success-mask2{position:fixed;inset:0;z-index:100000;background:rgba(0,0,0,0.85);display:none;align-items:center;justify-content:center;cursor:pointer;}
 .success-mask2.show{display:flex;}
 .success-img2{width:100%;height:100%;object-fit:contain;display:block;pointer-events:none}
 
@@ -135,6 +135,7 @@ document.addEventListener('DOMContentLoaded', function(){
   if(mask){
     mask.addEventListener('click', function(){
       this.style.display = 'none';
+      this.innerHTML = ''; // 清空内容防止闪烁
       var mask2 = document.getElementById('successMask2');
       if(mask2) mask2.style.display = 'flex';
     });
@@ -142,7 +143,8 @@ document.addEventListener('DOMContentLoaded', function(){
   // 点击第二个成功页面后关闭
   var mask2 = document.getElementById('successMask2');
   if(mask2){
-    mask2.addEventListener('click', function(){
+    mask2.addEventListener('click', function(e){
+      e.stopPropagation();
       this.style.display = 'none';
       window.parent.postMessage({type:'closePayment'}, '*');
     });
