@@ -145,7 +145,7 @@ document.addEventListener('DOMContentLoaded', function(){
   if(mask2){
     mask2.addEventListener('click', function(e){
       e.stopPropagation();
-      this.style.display = 'none';
+      // 不单独隐藏，直接通知父页面关闭整个支付弹窗，避免闪烁
       window.parent.postMessage({type:'closePayment'}, '*');
     });
   }
